@@ -4,41 +4,42 @@ using UnityEngine;
 public class PortalSummon : MonoBehaviour
 {
     [Header("References")]
-    public Transform creatureRoot;        // Drag CreatureRoot here
-    public GameObject summonCircle;       // Drag SummonCircle (Quad) here
-    public Renderer circleRenderer;       // Drag SummonCircle (Mesh Renderer) here
-    public ParticleSystem fireVfx;        // Drag FireVFX here (child of CreatureRoot)
-    public AudioSource summonSfx;         // Optional
+    public Transform creatureRoot;          // CreatureRoot (enable/disable this)
+    public GameObject summonCircle;         // SummonCircle Quad
+    public Renderer circleRenderer;         // Mesh Renderer on SummonCircle
+    public ParticleSystem fireVfx;          // FireVFX (child of CreatureRoot)
 
     [Header("Creature Movement")]
     public Vector3 creatureStartLocalPos = new Vector3(0f, -0.05f, 0f);
     public Vector3 creatureEndLocalPos   = new Vector3(0f,  0.00f, 0f);
+    public float creatureRiseTime = 0.7f;
 
     [Header("Timing")]
-    public float circleOpenTime   = 0.25f;
-    public float creatureRiseTime = 0.70f;
-    public float circleFadeTime   = 0.40f;
+    public float runeOpenTime = 0.25f;
+    public float waitBeforeFire = 1.0f;
+    public float waitBeforeDragon = 0.1f;
+    public float runeFadeTime = 0.4f;
+    public float fireStopDelay = 0.2f;
 
-    [Header("Circle Size")]
-    public float circleStartScale = 0.001f;
-    public float circleEndScale   = 0.055f;   // Good for ~6.3cm target width
+    [Header("Rune Scale")]
+    public float runeStartScale = 0.001f;
+    public float runeEndScale = 0.055f; // good for ~6.3cm target
 
-    [Header("Circle Spin (optional)")]
-    public bool spinCircle = true;
+    [Header("Rune Spin (optional)")]
+    public bool spinRune = true;
     public float spinSpeed = 90f;
 
     Coroutine routine;
     bool hasSummoned;
 
-    Material _circleMat; // cached material instance
+    // URP base color property (works for URP Unlit/Lit)
+    static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    Material _circleMat;
 
     void Awake()
     {
-        // Cache ONE material instance so we don't create lots of copies
         if (circleRenderer != null)
-        {
-            _circleMat = circleRenderer.material;
-        }
+            _circleMat = circleRenderer.material; // one instance
 
         if (creatureRoot != null)
         {
@@ -48,12 +49,14 @@ public class PortalSummon : MonoBehaviour
 
         if (summonCircle != null)
         {
-            summonCircle.transform.localScale = Vector3.one * circleStartScale;
+            summonCircle.transform.localScale = Vector3.one * runeStartScale;
             summonCircle.SetActive(false);
         }
+
+        if (fireVfx != null)
+            fireVfx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
     }
 
-    // Called by Vuforia "On Target Found"
     public void OnFound()
     {
         if (hasSummoned || creatureRoot == null) return;
@@ -63,11 +66,9 @@ public class PortalSummon : MonoBehaviour
         routine = StartCoroutine(SummonRoutine());
     }
 
-    // Called by Vuforia "On Target Lost" (optional)
     public void OnLost()
     {
         hasSummoned = false;
-
         if (routine != null) StopCoroutine(routine);
         routine = null;
 
@@ -86,56 +87,57 @@ public class PortalSummon : MonoBehaviour
 
     IEnumerator SummonRoutine()
     {
-        // Show circle and reset alpha
+        // 1) Rune appears + opens
         if (summonCircle != null)
+        {
             summonCircle.SetActive(true);
+            summonCircle.transform.localScale = Vector3.one * runeStartScale;
+        }
 
-        SetCircleAlpha(1f);
+        SetRuneAlpha(1f);
+        yield return ScaleRune(runeStartScale, runeEndScale, runeOpenTime);
 
-        // Open circle (scale up)
-        yield return ScaleCircle(circleStartScale, circleEndScale, circleOpenTime);
+        // 2) Wait 1 second (dramatic pause)
+        yield return new WaitForSeconds(waitBeforeFire);
 
-        // Start fire + raise creature
+        // 3) Fire starts
         if (fireVfx != null) fireVfx.Play();
-        if (summonSfx != null) summonSfx.Play();
+
+        // 4) After a short delay, dragon appears and rises
+        yield return new WaitForSeconds(waitBeforeDragon);
 
         creatureRoot.localPosition = creatureStartLocalPos;
         creatureRoot.gameObject.SetActive(true);
 
-        yield return MoveCreatureUp(creatureStartLocalPos, creatureEndLocalPos, creatureRiseTime);
+        yield return MoveCreature(creatureStartLocalPos, creatureEndLocalPos, creatureRiseTime);
 
-        // Stop fire smoothly (let particles finish)
+        // 5) Stop fire + fade rune out
+        yield return new WaitForSeconds(fireStopDelay);
+
         if (fireVfx != null)
             fireVfx.Stop(true, ParticleSystemStopBehavior.StopEmitting);
 
-        // Fade out circle
-        yield return FadeCircle(1f, 0f, circleFadeTime);
+        yield return FadeRune(1f, 0f, runeFadeTime);
 
-        if (summonCircle != null)
-            summonCircle.SetActive(false);
-
+        if (summonCircle != null) summonCircle.SetActive(false);
         routine = null;
     }
 
-    IEnumerator MoveCreatureUp(Vector3 from, Vector3 to, float dur)
+    IEnumerator MoveCreature(Vector3 from, Vector3 to, float dur)
     {
         float t = 0f;
         while (t < dur)
         {
             t += Time.deltaTime;
             float p = Mathf.Clamp01(t / dur);
-
-            // Smoothstep
             float smooth = p * p * (3f - 2f * p);
-
             creatureRoot.localPosition = Vector3.Lerp(from, to, smooth);
             yield return null;
         }
-
         creatureRoot.localPosition = to;
     }
 
-    IEnumerator ScaleCircle(float from, float to, float dur)
+    IEnumerator ScaleRune(float from, float to, float dur)
     {
         float t = 0f;
         float rot = 0f;
@@ -150,10 +152,9 @@ public class PortalSummon : MonoBehaviour
             if (summonCircle != null)
                 summonCircle.transform.localScale = Vector3.one * s;
 
-            if (spinCircle && summonCircle != null)
+            if (spinRune && summonCircle != null)
             {
                 rot += Time.deltaTime * spinSpeed;
-                // Keep it flat (90 deg) and rotate around Z
                 summonCircle.transform.localRotation = Quaternion.Euler(90f, 0f, rot);
             }
 
@@ -164,36 +165,41 @@ public class PortalSummon : MonoBehaviour
             summonCircle.transform.localScale = Vector3.one * to;
     }
 
-    IEnumerator FadeCircle(float from, float to, float dur)
+    IEnumerator FadeRune(float from, float to, float dur)
     {
         float t = 0f;
-
         while (t < dur)
         {
             t += Time.deltaTime;
             float p = Mathf.Clamp01(t / dur);
-            SetCircleAlpha(Mathf.Lerp(from, to, p));
+            SetRuneAlpha(Mathf.Lerp(from, to, p));
             yield return null;
         }
-
-        SetCircleAlpha(to);
+        SetRuneAlpha(to);
     }
 
-    void SetCircleAlpha(float a)
+    void SetRuneAlpha(float a)
     {
         if (_circleMat == null) return;
 
-        Color c = _circleMat.color;
-        c.a = a;
-        _circleMat.color = c;
+        // Works for URP shaders that use _BaseColor
+        if (_circleMat.HasProperty(BaseColorId))
+        {
+            Color c = _circleMat.GetColor(BaseColorId);
+            c.a = a;
+            _circleMat.SetColor(BaseColorId, c);
+        }
+        else
+        {
+            // Fallback
+            Color c = _circleMat.color;
+            c.a = a;
+            _circleMat.color = c;
+        }
     }
 
 #if UNITY_EDITOR
-    // Right-click the component header in Inspector -> TEST Summon
     [ContextMenu("TEST Summon")]
-    void TestSummon()
-    {
-        OnFound();
-    }
+    void TestSummon() => OnFound();
 #endif
 }
