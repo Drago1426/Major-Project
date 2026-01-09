@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acf197a5873a63e4498f761272509fdc, type: 3}
+  m_Name: Card_WaterDragon
+  m_EditorClassIdentifier: Assembly-CSharp::CardData
+  cardName: Water Dragon
+  element: 1
+  creaturePrefab: {fileID: 3525536196938450821, guid: 8b13f26c65ca31c4189a91ad87f1b824, type: 3}
+  runeColor: {r: 0.5294118, g: 0.8078432, b: 0.9803922, a: 1}
+  fireColor: {r: 0, g: 0.8078432, b: 0.8196079, a: 1}
+  summonSfx: {fileID: 0}
+  waitBeforeFire: 0.5
+  waitBeforeCreature: 0.1
