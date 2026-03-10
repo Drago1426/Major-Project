@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <QCARConfig>
   <Tracking>
-    <ImageTarget name="image_2025-12-19_101226047" size="0.063000 0.100288" />
+    <ImageTarget name="stromkarlen" size="0.063000 0.088200" />
+    <ImageTarget name="melusine" size="0.063000 0.088200" />
+    <ImageTarget name="leviathan" size="0.063000 0.088200" />
+    <ImageTarget name="cinder" size="0.063000 0.088200" />
+    <ImageTarget name="seraphina" size="0.063000 0.088200" />
+    <ImageTarget name="sunfyre" size="0.063000 0.088200" />
   </Tracking>
 </QCARConfig>

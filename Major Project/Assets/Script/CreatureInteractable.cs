@@ -32,6 +32,10 @@ public class CreatureInteractable : MonoBehaviour
         // Bounce
         if (_bounceRoutine != null) StopCoroutine(_bounceRoutine);
         _bounceRoutine = StartCoroutine(Bounce());
+
+        var combat = GetComponent<CreatureCombat>();
+        if (combat != null)
+            combat.TryAttack();
     }
 
     IEnumerator Bounce()

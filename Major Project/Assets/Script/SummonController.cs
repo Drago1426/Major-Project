@@ -47,10 +47,9 @@ public class SummonController : MonoBehaviour
 
     public void OnLost()
     {
-        if (_routine != null) StopCoroutine(_routine);
-        _routine = null;
-        ResetState();
+        
     }
+
 
     void ResetState()
     {
@@ -100,9 +99,18 @@ public class SummonController : MonoBehaviour
 
         if (cardData.creaturePrefab != null && creatureSpawnRoot != null)
         {
-            _spawnedCreature = Instantiate(cardData.creaturePrefab, creatureSpawnRoot);
-            _spawnedCreature.transform.localPosition = creatureStartLocalPos;
-            _spawnedCreature.transform.localRotation = Quaternion.identity;
+            _spawnedCreature = Instantiate(cardData.creaturePrefab);
+            _spawnedCreature.transform.position = creatureSpawnRoot.position;
+            _spawnedCreature.transform.rotation = creatureSpawnRoot.rotation;
+
+            // Register creature
+            var combat = _spawnedCreature.GetComponent<CreatureCombat>();
+            if (combat != null)
+            {
+                var mgr = FindObjectOfType<AttackCardManager>();
+                if (mgr != null)
+                    mgr.SetActiveCreature(combat);
+            }
         }
 
         // Sound
