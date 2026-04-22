@@ -496,6 +496,86 @@ MonoBehaviour:
   mCastedBehaviour: {fileID: 769195700}
   mMeshFilter: {fileID: 0}
   mMeshRenderer: {fileID: 0}
+--- !u!1 &894206188
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 894206191}
+  - component: {fileID: 894206190}
+  - component: {fileID: 894206189}
+  m_Layer: 0
+  m_Name: DeckRuntimeLoadrt
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &894206189
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 894206188}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23b2e7cfb466d554dbc2b763697612ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeckBuilderManager
+  deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
+  deckName: Test Deck
+  selectedGameType: 0
+  cardName: melusine
+  quantity: 1
+  mtgCardType: 0
+  pokemonCardType: 0
+  cardImage: {fileID: 2800000, guid: 7a9a9d34020946c88f9762e3ffd17837, type: 3}
+  targetWidthMeters: 0.06
+  health: 23
+  damage: 2
+  mana: 4
+  workingCards:
+  - cardName: melusine
+    quantity: 1
+    cardType: Creature
+    health: 23
+    damage: 2
+    mana: 4
+    imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\melusine_8865766345f54047a89a8b08c6947a67.png
+    targetWidthMeters: 0.06
+--- !u!114 &894206190
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 894206188}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb26ffdf8050bd54fb563d3a5f4b8de6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeckRuntimeImageTargetLoader
+  deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
+  deckIdToLoad: mtg-test-deck
+--- !u!4 &894206191
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 894206188}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.0375, y: 0.02493, z: -0.00191}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1188719092
 GameObject:
   m_ObjectHideFlags: 0
@@ -1689,3 +1769,4 @@ SceneRoots:
   - {fileID: 1770916836}
   - {fileID: 1639013145}
   - {fileID: 1548409112}
+  - {fileID: 894206191}

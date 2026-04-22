@@ -12,4 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 968dd2ebb04891347b05bf07442a224c, type: 3}
   m_Name: DeckDatabase
   m_EditorClassIdentifier: Assembly-CSharp::DeckDatabase
-  savedDecks: []
+  savedDecks:
+  - deckId: mtg-test-deck
+    deckName: Test Deck
+    gameType: 0
+    cards:
+    - cardName: melusine
+      quantity: 1
+      cardType: Creature
+      health: 23
+      damage: 2
+      mana: 4
+      imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\melusine_8865766345f54047a89a8b08c6947a67.png
+      targetWidthMeters: 0.06
