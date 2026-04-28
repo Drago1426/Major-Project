@@ -11,6 +11,8 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     [SerializeField] bool autoLoadOnStart = true;
     [SerializeField] string runtimeTargetNamePrefix = "runtime_deck_";
     [SerializeField] bool addCardDetectorToRuntimeTargets = true;
+    [SerializeField] bool addSummonOnTargetFoundToRuntimeTargets = true;
+    [SerializeField] GameObject defaultRuntimeCreaturePrefab;
 
     readonly HashSet<string> loadedTargetNames = new();
 
@@ -162,15 +164,43 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
 
     void TryAttachRuntimeComponents(ObserverBehaviour createdObserver)
     {
-        if (!addCardDetectorToRuntimeTargets || createdObserver == null)
+        if (createdObserver == null)
             return;
 
         var runtimeObject = createdObserver.gameObject;
-        if (runtimeObject.GetComponent<CardDetector>() == null)
+
+        if (addCardDetectorToRuntimeTargets && runtimeObject.GetComponent<CardDetector>() == null)
         {
             runtimeObject.AddComponent<CardDetector>();
             Debug.Log($"Added CardDetector to runtime target '{createdObserver.TargetName}'.");
         }
+
+        if (!addSummonOnTargetFoundToRuntimeTargets)
+            return;
+
+        var summonComponent = runtimeObject.GetComponent<SummonOnTargetFound>();
+        if (summonComponent == null)
+        {
+            summonComponent = runtimeObject.AddComponent<SummonOnTargetFound>();
+            Debug.Log($"Added SummonOnTargetFound to runtime target '{createdObserver.TargetName}'.");
+        }
+
+        if (summonComponent.creature != null || defaultRuntimeCreaturePrefab == null)
+        {
+            if (summonComponent.creature == null && defaultRuntimeCreaturePrefab == null)
+                Debug.LogWarning($"Summon is enabled for '{createdObserver.TargetName}' but Default Runtime Creature Prefab is not assigned.");
+            return;
+        }
+
+        var spawnedCreature = Instantiate(defaultRuntimeCreaturePrefab, runtimeObject.transform);
+        spawnedCreature.name = $"{defaultRuntimeCreaturePrefab.name}_runtime";
+        spawnedCreature.transform.localPosition = summonComponent.startLocalPos;
+        spawnedCreature.transform.localRotation = Quaternion.identity;
+        spawnedCreature.transform.localScale = Vector3.one;
+        spawnedCreature.SetActive(false);
+        summonComponent.creature = spawnedCreature;
+
+        Debug.Log($"Assigned runtime creature '{spawnedCreature.name}' to target '{createdObserver.TargetName}'.");
     }
 
     bool TryCreateWithVuforia(Texture2D texture, float widthMeters, string targetName, out ObserverBehaviour createdObserver, out string error)
