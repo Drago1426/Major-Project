@@ -13,6 +13,8 @@ public class DeckBuilderManagerEditor : Editor
     SerializedProperty pokemonCardType;
     SerializedProperty cardImage;
     SerializedProperty targetWidthMeters;
+    SerializedProperty cardModelPrefab;
+    SerializedProperty cardModelResourcePath;
     SerializedProperty health;
     SerializedProperty damage;
     SerializedProperty mana;
@@ -29,6 +31,8 @@ public class DeckBuilderManagerEditor : Editor
         pokemonCardType = serializedObject.FindProperty("pokemonCardType");
         cardImage = serializedObject.FindProperty("cardImage");
         targetWidthMeters = serializedObject.FindProperty("targetWidthMeters");
+        cardModelPrefab = serializedObject.FindProperty("cardModelPrefab");
+        cardModelResourcePath = serializedObject.FindProperty("cardModelResourcePath");
         health = serializedObject.FindProperty("health");
         damage = serializedObject.FindProperty("damage");
         mana = serializedObject.FindProperty("mana");
@@ -59,6 +63,9 @@ public class DeckBuilderManagerEditor : Editor
 
         EditorGUILayout.PropertyField(cardImage);
         EditorGUILayout.PropertyField(targetWidthMeters);
+        EditorGUILayout.PropertyField(cardModelPrefab);
+        EditorGUILayout.PropertyField(cardModelResourcePath);
+        EditorGUILayout.HelpBox("Drag a prefab into Card Model Prefab (must be under a Resources folder). If empty, Card Model Resource Path is used.", MessageType.None);
 
         var manager = (DeckBuilderManager)target;
         if (manager.CurrentCardNeedsCombatStats())

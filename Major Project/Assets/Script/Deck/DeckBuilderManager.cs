@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class DeckBuilderManager : MonoBehaviour
 {
@@ -19,6 +22,9 @@ public class DeckBuilderManager : MonoBehaviour
     [SerializeField] PokemonCardType pokemonCardType = PokemonCardType.Pokemon;
     [SerializeField] Texture2D cardImage;
     [SerializeField] float targetWidthMeters = 0.06f;
+    [SerializeField] GameObject cardModelPrefab;
+    [Tooltip("Optional Resources path for this card's summon prefab, e.g. Creatures/Dragon.")]
+    [SerializeField] string cardModelResourcePath = "";
 
     [Header("Only used for Creature / Pokemon cards")]
     [SerializeField] int health = 0;
@@ -62,6 +68,16 @@ public class DeckBuilderManager : MonoBehaviour
     public void SetTargetWidthMeters(float widthMeters)
     {
         targetWidthMeters = Mathf.Max(0.01f, widthMeters);
+    }
+
+    public void SetCardModelResourcePath(string resourcePath)
+    {
+        cardModelResourcePath = resourcePath;
+    }
+
+    public void SetCardModelPrefab(GameObject modelPrefab)
+    {
+        cardModelPrefab = modelPrefab;
     }
 
     public void SetMtgCardType(int cardTypeIndex)
@@ -117,6 +133,7 @@ public class DeckBuilderManager : MonoBehaviour
             return false;
         }
 
+        string resolvedModelResourcePath = ResolveModelResourcePathForCurrentCard();
         var card = new DeckCardEntry
         {
             cardName = cardName.Trim(),
@@ -125,7 +142,8 @@ public class DeckBuilderManager : MonoBehaviour
             health = health,
             damage = damage,
             mana = mana,
-            targetWidthMeters = targetWidthMeters
+            targetWidthMeters = targetWidthMeters,
+            modelResourcePath = resolvedModelResourcePath
         };
 
         if (card.NeedsCombatStats(selectedGameType) && (health <= 0 || damage <= 0 || mana < 0))
@@ -275,4 +293,44 @@ public class DeckBuilderManager : MonoBehaviour
 
         return string.IsNullOrWhiteSpace(safe) ? "card" : safe.Replace(" ", "_");
     }
+
+    string ResolveModelResourcePathForCurrentCard()
+    {
+        if (cardModelPrefab != null)
+        {
+#if UNITY_EDITOR
+            string prefabResourcePath = ConvertPrefabToResourcesPath(cardModelPrefab);
+            if (!string.IsNullOrWhiteSpace(prefabResourcePath))
+                return prefabResourcePath;
+#else
+            Debug.LogWarning("Card model prefab drag-and-drop path conversion is only available in the Unity Editor. Use cardModelResourcePath on runtime builds.");
+#endif
+        }
+
+        return string.IsNullOrWhiteSpace(cardModelResourcePath) ? string.Empty : cardModelResourcePath.Trim();
+    }
+
+#if UNITY_EDITOR
+    string ConvertPrefabToResourcesPath(GameObject prefab)
+    {
+        string assetPath = AssetDatabase.GetAssetPath(prefab);
+        if (string.IsNullOrWhiteSpace(assetPath))
+        {
+            Debug.LogWarning("Selected model prefab does not have a valid asset path.");
+            return string.Empty;
+        }
+
+        const string resourcesToken = "/Resources/";
+        int resourcesIndex = assetPath.IndexOf(resourcesToken, StringComparison.OrdinalIgnoreCase);
+        if (resourcesIndex < 0)
+        {
+            Debug.LogWarning($"Model prefab '{prefab.name}' is not inside a Resources folder. Move it under Assets/**/Resources/ to use drag-and-drop.");
+            return string.Empty;
+        }
+
+        int pathStart = resourcesIndex + resourcesToken.Length;
+        string pathWithoutExtension = assetPath.Substring(pathStart);
+        return Path.ChangeExtension(pathWithoutExtension, null).Replace("\\", "/");
+    }
+#endif
 }

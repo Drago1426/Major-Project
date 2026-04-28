@@ -135,7 +135,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return false;
         }
 
-        TryAttachRuntimeComponents(createdObserver);
+        TryAttachRuntimeComponents(createdObserver, card);
 
         Debug.Log(
             $"Created runtime Vuforia target '{runtimeTargetName}' from card '{card.cardName}' " +
@@ -162,7 +162,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         Debug.Log("Loaded runtime targets: " + string.Join(", ", loadedTargetNames));
     }
 
-    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver)
+    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card)
     {
         if (createdObserver == null)
             return;
@@ -185,15 +185,18 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             Debug.Log($"Added SummonOnTargetFound to runtime target '{createdObserver.TargetName}'.");
         }
 
-        if (summonComponent.creature != null || defaultRuntimeCreaturePrefab == null)
+        if (summonComponent.creature != null)
+            return;
+
+        GameObject modelPrefab = ResolveModelPrefabForCard(card);
+        if (modelPrefab == null)
         {
-            if (summonComponent.creature == null && defaultRuntimeCreaturePrefab == null)
-                Debug.LogWarning($"Summon is enabled for '{createdObserver.TargetName}' but Default Runtime Creature Prefab is not assigned.");
+            Debug.LogWarning($"Summon is enabled for '{createdObserver.TargetName}' but no per-card modelResourcePath or default runtime prefab was found.");
             return;
         }
 
-        var spawnedCreature = Instantiate(defaultRuntimeCreaturePrefab, runtimeObject.transform);
-        spawnedCreature.name = $"{defaultRuntimeCreaturePrefab.name}_runtime";
+        var spawnedCreature = Instantiate(modelPrefab, runtimeObject.transform);
+        spawnedCreature.name = $"{modelPrefab.name}_runtime";
         spawnedCreature.transform.localPosition = summonComponent.startLocalPos;
         spawnedCreature.transform.localRotation = Quaternion.identity;
         spawnedCreature.transform.localScale = Vector3.one;
@@ -201,6 +204,20 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         summonComponent.creature = spawnedCreature;
 
         Debug.Log($"Assigned runtime creature '{spawnedCreature.name}' to target '{createdObserver.TargetName}'.");
+    }
+
+    GameObject ResolveModelPrefabForCard(DeckCardEntry card)
+    {
+        if (card != null && card.HasModelResourcePath())
+        {
+            var perCardPrefab = Resources.Load<GameObject>(card.modelResourcePath);
+            if (perCardPrefab != null)
+                return perCardPrefab;
+
+            Debug.LogWarning($"Could not load model prefab from Resources path '{card.modelResourcePath}' for card '{card.cardName}'.");
+        }
+
+        return defaultRuntimeCreaturePrefab;
     }
 
     bool TryCreateWithVuforia(Texture2D texture, float widthMeters, string targetName, out ObserverBehaviour createdObserver, out string error)

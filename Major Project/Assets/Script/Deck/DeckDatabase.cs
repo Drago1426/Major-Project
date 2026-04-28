@@ -51,6 +51,8 @@ public class DeckCardEntry
     public string imagePath;
     [Tooltip("Physical width in meters used when creating a runtime image target.")]
     public float targetWidthMeters = 0.06f;
+    [Tooltip("Resources path to load this card's summon prefab (without file extension).")]
+    public string modelResourcePath;
 
     public bool NeedsCombatStats(CardGameType gameType)
     {
@@ -63,6 +65,11 @@ public class DeckCardEntry
     public bool HasImageTarget()
     {
         return !string.IsNullOrWhiteSpace(imagePath);
+    }
+
+    public bool HasModelResourcePath()
+    {
+        return !string.IsNullOrWhiteSpace(modelResourcePath);
     }
 }
 
