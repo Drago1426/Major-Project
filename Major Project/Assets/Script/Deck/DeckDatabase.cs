@@ -46,12 +46,23 @@ public class DeckCardEntry
     public int damage;
     public int mana;
 
+    [Header("AR Image Target")]
+    [Tooltip("Absolute path to the card image saved on device.")]
+    public string imagePath;
+    [Tooltip("Physical width in meters used when creating a runtime image target.")]
+    public float targetWidthMeters = 0.06f;
+
     public bool NeedsCombatStats(CardGameType gameType)
     {
         if (gameType == CardGameType.MTG)
             return string.Equals(cardType, MtgCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase);
 
         return string.Equals(cardType, PokemonCardType.Pokemon.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool HasImageTarget()
+    {
+        return !string.IsNullOrWhiteSpace(imagePath);
     }
 }
 

@@ -11,6 +11,8 @@ public class DeckBuilderManagerEditor : Editor
     SerializedProperty quantity;
     SerializedProperty mtgCardType;
     SerializedProperty pokemonCardType;
+    SerializedProperty cardImage;
+    SerializedProperty targetWidthMeters;
     SerializedProperty health;
     SerializedProperty damage;
     SerializedProperty mana;
@@ -25,6 +27,8 @@ public class DeckBuilderManagerEditor : Editor
         quantity = serializedObject.FindProperty("quantity");
         mtgCardType = serializedObject.FindProperty("mtgCardType");
         pokemonCardType = serializedObject.FindProperty("pokemonCardType");
+        cardImage = serializedObject.FindProperty("cardImage");
+        targetWidthMeters = serializedObject.FindProperty("targetWidthMeters");
         health = serializedObject.FindProperty("health");
         damage = serializedObject.FindProperty("damage");
         mana = serializedObject.FindProperty("mana");
@@ -52,6 +56,9 @@ public class DeckBuilderManagerEditor : Editor
             EditorGUILayout.PropertyField(mtgCardType);
         else
             EditorGUILayout.PropertyField(pokemonCardType);
+
+        EditorGUILayout.PropertyField(cardImage);
+        EditorGUILayout.PropertyField(targetWidthMeters);
 
         var manager = (DeckBuilderManager)target;
         if (manager.CurrentCardNeedsCombatStats())
