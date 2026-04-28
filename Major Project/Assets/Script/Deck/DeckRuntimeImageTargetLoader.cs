@@ -169,41 +169,48 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
 
         var runtimeObject = createdObserver.gameObject;
 
+        SummonOnTargetFound summonComponent = null;
+
+        if (addSummonOnTargetFoundToRuntimeTargets)
+        {
+            summonComponent = runtimeObject.GetComponent<SummonOnTargetFound>();
+
+            if (summonComponent == null)
+            {
+                summonComponent = runtimeObject.AddComponent<SummonOnTargetFound>();
+                Debug.Log($"Added SummonOnTargetFound to runtime target '{createdObserver.TargetName}'.");
+            }
+
+            if (summonComponent.creature == null)
+            {
+                GameObject modelPrefab = ResolveModelPrefabForCard(card);
+
+                if (modelPrefab == null)
+                {
+                    Debug.LogWarning($"Summon is enabled for '{createdObserver.TargetName}' but no per-card modelResourcePath or default runtime prefab was found.");
+                }
+                else
+                {
+                    var spawnedCreature = Instantiate(modelPrefab, runtimeObject.transform);
+                    spawnedCreature.name = $"{modelPrefab.name}_runtime";
+
+                    spawnedCreature.transform.localPosition = summonComponent.startLocalPos;
+                    spawnedCreature.transform.localRotation = Quaternion.identity;
+                    spawnedCreature.transform.localScale = Vector3.one;
+                    spawnedCreature.SetActive(false);
+
+                    summonComponent.creature = spawnedCreature;
+
+                    Debug.Log($"Assigned runtime creature '{spawnedCreature.name}' to target '{createdObserver.TargetName}'.");
+                }
+            }
+        }
+
         if (addCardDetectorToRuntimeTargets && runtimeObject.GetComponent<CardDetector>() == null)
         {
             runtimeObject.AddComponent<CardDetector>();
             Debug.Log($"Added CardDetector to runtime target '{createdObserver.TargetName}'.");
         }
-
-        if (!addSummonOnTargetFoundToRuntimeTargets)
-            return;
-
-        var summonComponent = runtimeObject.GetComponent<SummonOnTargetFound>();
-        if (summonComponent == null)
-        {
-            summonComponent = runtimeObject.AddComponent<SummonOnTargetFound>();
-            Debug.Log($"Added SummonOnTargetFound to runtime target '{createdObserver.TargetName}'.");
-        }
-
-        if (summonComponent.creature != null)
-            return;
-
-        GameObject modelPrefab = ResolveModelPrefabForCard(card);
-        if (modelPrefab == null)
-        {
-            Debug.LogWarning($"Summon is enabled for '{createdObserver.TargetName}' but no per-card modelResourcePath or default runtime prefab was found.");
-            return;
-        }
-
-        var spawnedCreature = Instantiate(modelPrefab, runtimeObject.transform);
-        spawnedCreature.name = $"{modelPrefab.name}_runtime";
-        spawnedCreature.transform.localPosition = summonComponent.startLocalPos;
-        spawnedCreature.transform.localRotation = Quaternion.identity;
-        spawnedCreature.transform.localScale = Vector3.one;
-        spawnedCreature.SetActive(false);
-        summonComponent.creature = spawnedCreature;
-
-        Debug.Log($"Assigned runtime creature '{spawnedCreature.name}' to target '{createdObserver.TargetName}'.");
     }
 
     GameObject ResolveModelPrefabForCard(DeckCardEntry card)

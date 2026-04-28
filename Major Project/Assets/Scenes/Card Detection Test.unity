@@ -264,7 +264,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &659560765
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -389,7 +389,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &769195699
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -535,6 +535,8 @@ MonoBehaviour:
   pokemonCardType: 0
   cardImage: {fileID: 2800000, guid: 7a9a9d34020946c88f9762e3ffd17837, type: 3}
   targetWidthMeters: 0.06
+  cardModelPrefab: {fileID: 919132149155446097, guid: f8b20a74f38148746a16674b8767b911, type: 3}
+  cardModelResourcePath: 
   health: 23
   damage: 2
   mana: 4
@@ -545,8 +547,9 @@ MonoBehaviour:
     health: 23
     damage: 2
     mana: 4
-    imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\melusine_8865766345f54047a89a8b08c6947a67.png
+    imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\melusine_a4f58ca768d04d749da79a53c56aa8d9.png
     targetWidthMeters: 0.06
+    modelResourcePath: 
 --- !u!114 &894206190
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -561,6 +564,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DeckRuntimeImageTargetLoader
   deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
   deckIdToLoad: mtg-test-deck
+  autoLoadOnStart: 1
+  runtimeTargetNamePrefix: runtime_deck_
+  addCardDetectorToRuntimeTargets: 1
+  addSummonOnTargetFoundToRuntimeTargets: 1
+  defaultRuntimeCreaturePrefab: {fileID: 3525536196938450821, guid: 8b13f26c65ca31c4189a91ad87f1b824, type: 3}
 --- !u!4 &894206191
 Transform:
   m_ObjectHideFlags: 0
@@ -594,7 +602,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1188719093
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -977,7 +985,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1548409110
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1353,7 +1361,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1639013143
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1650,7 +1658,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1770916834
 MonoBehaviour:
   m_ObjectHideFlags: 0

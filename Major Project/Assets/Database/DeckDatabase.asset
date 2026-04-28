@@ -23,5 +23,6 @@ MonoBehaviour:
       health: 23
       damage: 2
       mana: 4
-      imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\melusine_8865766345f54047a89a8b08c6947a67.png
+      imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\melusine_a4f58ca768d04d749da79a53c56aa8d9.png
       targetWidthMeters: 0.06
+      modelResourcePath: 

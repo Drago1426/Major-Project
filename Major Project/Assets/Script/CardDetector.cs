@@ -3,44 +3,87 @@ using Vuforia;
 
 public class CardDetector : MonoBehaviour
 {
-    ObserverBehaviour observerBehaviour;
-    SummonOnTargetFound summonOnTargetFound;
+    private ObserverBehaviour observerBehaviour;
+    private SummonOnTargetFound summonOnTargetFound;
+    private bool wasTracked;
 
-    void Start()
+    private void Awake()
     {
         observerBehaviour = GetComponent<ObserverBehaviour>();
-        summonOnTargetFound = GetComponent<SummonOnTargetFound>();
-
-        if (observerBehaviour)
-        {
-            observerBehaviour.OnTargetStatusChanged += OnTargetStatusChanged;
-        }
+        FindSummonScript();
     }
 
-    void OnDestroy()
+    private void OnEnable()
     {
-        if (observerBehaviour)
+        if (observerBehaviour != null)
+            observerBehaviour.OnTargetStatusChanged += OnTargetStatusChanged;
+    }
+
+    private void OnDisable()
+    {
+        if (observerBehaviour != null)
             observerBehaviour.OnTargetStatusChanged -= OnTargetStatusChanged;
     }
 
-    void OnTargetStatusChanged(ObserverBehaviour behaviour, TargetStatus status)
+    private void Start()
     {
-        if (status.Status == Status.TRACKED || status.Status == Status.EXTENDED_TRACKED)
-        {
-            string cardName = behaviour.TargetName;
-            Debug.Log("Detected card: " + cardName);
+        if (observerBehaviour == null)
+            Debug.LogWarning($"[CardDetector] Missing ObserverBehaviour on '{gameObject.name}'.", this);
 
-            Speak(cardName);
-            summonOnTargetFound?.OnFound();
-            return;
-        }
-
-        summonOnTargetFound?.OnLost();
+        if (summonOnTargetFound == null)
+            Debug.LogWarning($"[CardDetector] No SummonOnTargetFound found yet for '{gameObject.name}'. Will try again when card is detected.", this);
     }
 
-    void Speak(string text)
+    private void OnTargetStatusChanged(ObserverBehaviour behaviour, TargetStatus status)
     {
-        // placeholder for speech
-        Debug.Log("Speaking: " + text);
+        bool isTracked =
+            status.Status == Status.TRACKED ||
+            status.Status == Status.EXTENDED_TRACKED;
+
+        if (isTracked && !wasTracked)
+        {
+            wasTracked = true;
+
+            string cardName = behaviour.TargetName;
+            Debug.Log("[CardDetector] Detected card: " + cardName, this);
+
+            Speak(cardName);
+
+            if (summonOnTargetFound == null)
+                FindSummonScript();
+
+            if (summonOnTargetFound == null)
+            {
+                Debug.LogWarning($"[CardDetector] Card was detected, but no SummonOnTargetFound exists on '{gameObject.name}'.", this);
+                return;
+            }
+
+            summonOnTargetFound.OnFound();
+        }
+        else if (!isTracked && wasTracked)
+        {
+            wasTracked = false;
+
+            if (summonOnTargetFound == null)
+                FindSummonScript();
+
+            summonOnTargetFound?.OnLost();
+        }
+    }
+
+    private void FindSummonScript()
+    {
+        summonOnTargetFound = GetComponent<SummonOnTargetFound>();
+
+        if (summonOnTargetFound == null)
+            summonOnTargetFound = GetComponentInChildren<SummonOnTargetFound>(true);
+
+        if (summonOnTargetFound == null)
+            summonOnTargetFound = GetComponentInParent<SummonOnTargetFound>();
+    }
+
+    private void Speak(string text)
+    {
+        Debug.Log("[CardDetector] Speaking: " + text, this);
     }
 }
