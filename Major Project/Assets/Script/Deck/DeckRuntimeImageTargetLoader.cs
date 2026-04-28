@@ -1,16 +1,44 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
+using Vuforia;
 
 public class DeckRuntimeImageTargetLoader : MonoBehaviour
 {
     [SerializeField] DeckDatabase deckDatabase;
     [SerializeField] string deckIdToLoad;
+    [SerializeField] bool autoLoadOnStart = true;
+    [SerializeField] string runtimeTargetNamePrefix = "runtime_deck_";
+    [SerializeField] bool addCardDetectorToRuntimeTargets = true;
+
+    readonly HashSet<string> loadedTargetNames = new();
+
+    void Start()
+    {
+        Debug.Log($"[DeckRuntimeImageTargetLoader] Start on '{gameObject.name}'. autoLoadOnStart={autoLoadOnStart}");
+
+        if (autoLoadOnStart)
+            LoadRuntimeImageTargets();
+    }
+
+    [ContextMenu("Test Loader Log")]
+    public void TestLoaderLog()
+    {
+        Debug.Log($"[DeckRuntimeImageTargetLoader] Test log from '{gameObject.name}'.");
+    }
 
     [ContextMenu("Load Runtime Image Targets")]
     public void LoadRuntimeImageTargets()
     {
+        Debug.Log("[DeckRuntimeImageTargetLoader] LoadRuntimeImageTargets() called.");
+
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Load Runtime Image Targets must run in Play Mode so Vuforia is initialized.");
+            return;
+        }
+
         if (deckDatabase == null)
         {
             Debug.LogWarning("DeckDatabase reference is missing.");
@@ -24,62 +52,173 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return;
         }
 
+        int createdCount = 0;
+        int skippedCount = 0;
+        int failedCount = 0;
+
         for (int i = 0; i < deck.cards.Count; i++)
         {
             var card = deck.cards[i];
             if (card == null || !card.HasImageTarget())
+            {
+                skippedCount++;
                 continue;
+            }
 
-            TryCreateVuforiaImageTarget(card);
+            string runtimeTargetName = BuildRuntimeTargetName(card.cardName);
+            if (loadedTargetNames.Contains(runtimeTargetName))
+            {
+                skippedCount++;
+                Debug.Log($"Skipping duplicate runtime target '{runtimeTargetName}'.");
+                continue;
+            }
+
+            if (TryCreateVuforiaImageTarget(card, runtimeTargetName))
+            {
+                createdCount++;
+                loadedTargetNames.Add(runtimeTargetName);
+                continue;
+            }
+
+            failedCount++;
         }
+
+        Debug.Log(
+            $"Runtime target load finished for deck '{deckIdToLoad}'. " +
+            $"Created: {createdCount}, Skipped: {skippedCount}, Failed: {failedCount}. " +
+            $"Runtime target names use prefix '{runtimeTargetNamePrefix}'.");
     }
 
-    void TryCreateVuforiaImageTarget(DeckCardEntry card)
+    string BuildRuntimeTargetName(string cardName)
     {
+        string trimmedCardName = string.IsNullOrWhiteSpace(cardName) ? "unknown_card" : cardName.Trim();
+        return $"{runtimeTargetNamePrefix}{trimmedCardName}";
+    }
+
+    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName)
+    {
+        if (card == null)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(card.imagePath))
+        {
+            Debug.LogWarning($"Card '{card.cardName}' has no image path.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(runtimeTargetName))
+        {
+            Debug.LogWarning($"Card '{card.cardName}' has an invalid runtime target name.");
+            return false;
+        }
+
         if (!File.Exists(card.imagePath))
         {
             Debug.LogWarning($"Image file missing for card '{card.cardName}': {card.imagePath}");
-            return;
+            return false;
         }
 
         var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
         if (!texture.LoadImage(File.ReadAllBytes(card.imagePath)))
         {
-            Destroy(texture);
+            SafeDestroy(texture);
             Debug.LogWarning($"Failed to load image bytes for card '{card.cardName}'.");
+            return false;
+        }
+
+        if (!TryCreateWithVuforia(texture, card.targetWidthMeters, runtimeTargetName, out ObserverBehaviour createdObserver, out string createError))
+        {
+            SafeDestroy(texture);
+            Debug.LogWarning($"Could not create Vuforia image target for '{card.cardName}'. Reason: {createError}");
+            return false;
+        }
+
+        TryAttachRuntimeComponents(createdObserver);
+
+        Debug.Log(
+            $"Created runtime Vuforia target '{runtimeTargetName}' from card '{card.cardName}' " +
+            $"(width: {Mathf.Max(0.01f, card.targetWidthMeters):0.###}m).");
+        return true;
+    }
+
+    [ContextMenu("Clear Loaded Runtime Target Cache")]
+    public void ClearLoadedRuntimeTargetCache()
+    {
+        loadedTargetNames.Clear();
+        Debug.Log("Cleared runtime target cache in DeckRuntimeImageTargetLoader.");
+    }
+
+    [ContextMenu("Print Loaded Runtime Targets")]
+    public void PrintLoadedRuntimeTargets()
+    {
+        if (loadedTargetNames.Count == 0)
+        {
+            Debug.Log("No runtime targets have been created in this session.");
             return;
         }
 
-        if (!InvokeVuforiaObserverFactory(texture, card.targetWidthMeters, card.cardName))
+        Debug.Log("Loaded runtime targets: " + string.Join(", ", loadedTargetNames));
+    }
+
+    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver)
+    {
+        if (!addCardDetectorToRuntimeTargets || createdObserver == null)
+            return;
+
+        var runtimeObject = createdObserver.gameObject;
+        if (runtimeObject.GetComponent<CardDetector>() == null)
         {
-            Destroy(texture);
-            Debug.LogWarning($"Could not create Vuforia image target for '{card.cardName}'.");
+            runtimeObject.AddComponent<CardDetector>();
+            Debug.Log($"Added CardDetector to runtime target '{createdObserver.TargetName}'.");
         }
     }
 
-    bool InvokeVuforiaObserverFactory(Texture2D texture, float widthMeters, string targetName)
+    bool TryCreateWithVuforia(Texture2D texture, float widthMeters, string targetName, out ObserverBehaviour createdObserver, out string error)
     {
-        var vuforiaBehaviourType = Type.GetType("Vuforia.VuforiaBehaviour, Vuforia.Unity.Wrapper");
-        if (vuforiaBehaviourType == null)
-            return false;
+        createdObserver = null;
+        error = string.Empty;
 
-        var instanceProperty = vuforiaBehaviourType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
-        var instance = instanceProperty?.GetValue(null);
-        if (instance == null)
+        var vuforiaBehaviour = VuforiaBehaviour.Instance;
+        if (vuforiaBehaviour == null)
+        {
+            error = "VuforiaBehaviour.Instance is null (Vuforia may not be initialized yet).";
             return false;
+        }
 
-        var observerFactoryProperty = vuforiaBehaviourType.GetProperty("ObserverFactory", BindingFlags.Public | BindingFlags.Instance);
-        var observerFactory = observerFactoryProperty?.GetValue(instance);
+        var observerFactory = vuforiaBehaviour.ObserverFactory;
         if (observerFactory == null)
+        {
+            error = "ObserverFactory is null on VuforiaBehaviour.Instance.";
             return false;
-
-        var factoryType = observerFactory.GetType();
-        var createImageTargetMethod = factoryType.GetMethod("CreateImageTarget", new[] { typeof(Texture2D), typeof(float), typeof(string) });
-        if (createImageTargetMethod == null)
-            return false;
+        }
 
         var safeWidth = Mathf.Max(0.01f, widthMeters);
-        createImageTargetMethod.Invoke(observerFactory, new object[] { texture, safeWidth, targetName });
+        try
+        {
+            createdObserver = observerFactory.CreateImageTarget(texture, safeWidth, targetName);
+            if (createdObserver == null)
+            {
+                error = "CreateImageTarget returned null.";
+                return false;
+            }
+        }
+        catch (Exception e)
+        {
+            error = $"CreateImageTarget failed: {e.Message}";
+            return false;
+        }
+
         return true;
+    }
+
+    void SafeDestroy(UnityEngine.Object obj)
+    {
+        if (obj == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(obj);
+        else
+            DestroyImmediate(obj);
     }
 }
