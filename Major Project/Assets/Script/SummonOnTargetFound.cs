@@ -5,8 +5,13 @@ public class SummonOnTargetFound : MonoBehaviour
 {
     [Header("References")]
     public GameObject creature;          // your 3D model root
-    public ParticleSystem summonVfx;      // particle system on the card
+    public ParticleSystem summonVfx;
     public AudioSource summonSfx;         // optional sound
+    public Animator creatureAnimator;
+
+    [Header("Animation Trigger")]
+    public bool triggerCreatureAnimation = true;
+    public string summonTriggerName = "Summon";
 
     [Header("Motion")]
     public Vector3 startLocalPos = new Vector3(0f, -0.05f, 0f);
@@ -61,6 +66,8 @@ public class SummonOnTargetFound : MonoBehaviour
 
         creature.transform.localPosition = startLocalPos;
         creature.SetActive(true);
+        if (triggerCreatureAnimation && creatureAnimator != null && !string.IsNullOrWhiteSpace(summonTriggerName))
+            creatureAnimator.SetTrigger(summonTriggerName);
 
         float t = 0f;
         while (t < riseDuration)
