@@ -14,6 +14,12 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     [SerializeField] bool addSummonOnTargetFoundToRuntimeTargets = true;
     [SerializeField] GameObject defaultRuntimeCreaturePrefab;
 
+    [Header("Runtime Stats Display")]
+    [SerializeField] Sprite healthIcon;
+    [SerializeField] Sprite manaIcon;
+    [SerializeField] Sprite damageIcon;
+    [SerializeField] bool addStatsDisplayToRuntimeModels = true;
+
     readonly HashSet<string> loadedTargetNames = new();
 
     void Start()
@@ -193,13 +199,28 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                 {
                     var spawnedCreature = Instantiate(modelPrefab, runtimeObject.transform);
                     spawnedCreature.name = $"{modelPrefab.name}_runtime";
-
                     spawnedCreature.transform.localPosition = summonComponent.startLocalPos;
                     spawnedCreature.transform.localRotation = Quaternion.identity;
                     spawnedCreature.transform.localScale = Vector3.one;
                     spawnedCreature.SetActive(false);
-
                     summonComponent.creature = spawnedCreature;
+
+                    if (addStatsDisplayToRuntimeModels && card != null)
+                    {
+                        var statsDisplay = spawnedCreature.GetComponent<CardStatsDisplay3D>();
+
+                        if (statsDisplay == null)
+                            statsDisplay = spawnedCreature.AddComponent<CardStatsDisplay3D>();
+
+                        statsDisplay.Initialize(
+                            card.health,
+                            card.mana,
+                            card.damage,
+                            healthIcon,
+                            manaIcon,
+                            damageIcon
+                        );
+                    }
 
                     Debug.Log($"Assigned runtime creature '{spawnedCreature.name}' to target '{createdObserver.TargetName}'.");
                 }
