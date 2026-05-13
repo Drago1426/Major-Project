@@ -5,12 +5,14 @@ public class CardDetector : MonoBehaviour
 {
     private ObserverBehaviour observerBehaviour;
     private SummonOnTargetFound summonOnTargetFound;
+    private SpellCardAnimationController spellCardAnimationController;
     private bool wasTracked;
 
     private void Awake()
     {
         observerBehaviour = GetComponent<ObserverBehaviour>();
         FindSummonScript();
+        spellCardAnimationController = GetComponent<SpellCardAnimationController>();
     }
 
     private void OnEnable()
@@ -52,6 +54,9 @@ public class CardDetector : MonoBehaviour
             if (summonOnTargetFound == null)
                 FindSummonScript();
 
+            if (spellCardAnimationController == null)
+                spellCardAnimationController = GetComponent<SpellCardAnimationController>();
+
             if (summonOnTargetFound == null)
             {
                 Debug.LogWarning($"[CardDetector] Card was detected, but no SummonOnTargetFound exists on '{gameObject.name}'.", this);
@@ -59,6 +64,7 @@ public class CardDetector : MonoBehaviour
             }
 
             summonOnTargetFound.OnFound();
+            spellCardAnimationController?.OnCardFound();
         }
         else if (!isTracked && wasTracked)
         {

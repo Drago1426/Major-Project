@@ -14,6 +14,10 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     [SerializeField] bool addSummonOnTargetFoundToRuntimeTargets = true;
     [SerializeField] GameObject defaultRuntimeCreaturePrefab;
 
+    [Header("Spell Card Animations")]
+    [SerializeField] bool enableSpellCardAnimations = true;
+    [SerializeField] string defaultSpellAnimationTrigger = "Cast";
+
     [Header("Runtime Stats Display")]
     [SerializeField] Sprite healthIcon;
     [SerializeField] Sprite manaIcon;
@@ -81,7 +85,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                 continue;
             }
 
-            if (TryCreateVuforiaImageTarget(card, runtimeTargetName))
+            if (TryCreateVuforiaImageTarget(card, runtimeTargetName, deck.gameType))
             {
                 createdCount++;
                 loadedTargetNames.Add(runtimeTargetName);
@@ -103,7 +107,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         return $"{runtimeTargetNamePrefix}{trimmedCardName}";
     }
 
-    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName)
+    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName, CardGameType gameType)
     {
         if (card == null)
             return false;
@@ -141,7 +145,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return false;
         }
 
-        TryAttachRuntimeComponents(createdObserver, card);
+        TryAttachRuntimeComponents(createdObserver, card, gameType);
 
         Debug.Log(
             $"Created runtime Vuforia target '{runtimeTargetName}' from card '{card.cardName}' " +
@@ -168,7 +172,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         Debug.Log("Loaded runtime targets: " + string.Join(", ", loadedTargetNames));
     }
 
-    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card)
+    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card, CardGameType gameType)
     {
         if (createdObserver == null)
             return;
@@ -205,6 +209,9 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                     spawnedCreature.SetActive(false);
                     summonComponent.creature = spawnedCreature;
 
+                    if (summonComponent.creatureAnimator == null)
+                        summonComponent.creatureAnimator = spawnedCreature.GetComponentInChildren<Animator>(true);
+
                     if (addStatsDisplayToRuntimeModels && card != null)
                     {
                         var statsDisplay = spawnedCreature.GetComponent<CardStatsDisplay3D>();
@@ -227,11 +234,39 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             }
         }
 
+        if (enableSpellCardAnimations)
+            ConfigureSpellAnimation(createdObserver, card, gameType, summonComponent);
+
         if (addCardDetectorToRuntimeTargets && runtimeObject.GetComponent<CardDetector>() == null)
         {
             runtimeObject.AddComponent<CardDetector>();
             Debug.Log($"Added CardDetector to runtime target '{createdObserver.TargetName}'.");
         }
+    }
+
+    void ConfigureSpellAnimation(ObserverBehaviour createdObserver, DeckCardEntry card, CardGameType gameType, SummonOnTargetFound summonComponent)
+    {
+        if (createdObserver == null || card == null)
+            return;
+
+        var runtimeObject = createdObserver.gameObject;
+        var spellController = runtimeObject.GetComponent<SpellCardAnimationController>();
+        if (spellController == null)
+            spellController = runtimeObject.AddComponent<SpellCardAnimationController>();
+
+        Animator spellAnimator = summonComponent != null ? summonComponent.creatureAnimator : null;
+        if (spellAnimator == null && summonComponent != null && summonComponent.creature != null)
+            spellAnimator = summonComponent.creature.GetComponentInChildren<Animator>(true);
+
+        string triggerName = string.IsNullOrWhiteSpace(card.spellAnimationTrigger)
+            ? defaultSpellAnimationTrigger
+            : card.spellAnimationTrigger;
+
+        GameObject spellVfxPrefab = null;
+        if (!string.IsNullOrWhiteSpace(card.spellVfxResourcePath))
+            spellVfxPrefab = Resources.Load<GameObject>(card.spellVfxResourcePath);
+
+        spellController.ConfigureForRuntimeCard(card.IsSpellLike(gameType), spellAnimator, triggerName, spellVfxPrefab);
     }
 
     GameObject ResolveModelPrefabForCard(DeckCardEntry card)

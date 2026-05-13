@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 4911446703656337494}
   - component: {fileID: 2309839898825634885}
   - component: {fileID: 7105510650301564415}
-  - component: {fileID: -6705985418786311480}
+  - component: {fileID: 8997618128429516881}
   m_Layer: 0
   m_Name: FireAttackVFX
   m_TagString: Untagged
@@ -4837,17 +4837,25 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
---- !u!114 &-6705985418786311480
-MonoBehaviour:
+--- !u!95 &8997618128429516881
+Animator:
+  serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 102781286671456952}
   m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2dfb98503dbe9164b93017cc3e92f1af, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FireballCardDetector
-  fireballTargetName: Fireball
-  attackCardManager: {fileID: 0}
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 0}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

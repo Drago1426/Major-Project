@@ -529,13 +529,13 @@ MonoBehaviour:
   deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
   deckName: Test Deck
   selectedGameType: 0
-  cardName: Cinder
+  cardName: Fireball
   quantity: 1
-  mtgCardType: 0
+  mtgCardType: 1
   pokemonCardType: 0
-  cardImage: {fileID: 2800000, guid: ab6460fd89e6472b9477f46cbd28bd08, type: 3}
+  cardImage: {fileID: 2800000, guid: 794368d7006942ce86482b9f4d27fcdf, type: 3}
   targetWidthMeters: 0.06
-  cardModelPrefab: {fileID: 5312658052615586829, guid: 05a52f886c33cde49b5a1c791c150024, type: 3}
+  cardModelPrefab: {fileID: 0}
   cardModelResourcePath: 
   health: 23
   damage: 2
@@ -547,6 +547,8 @@ MonoBehaviour:
     health: 23
     damage: 2
     mana: 4
+    spellAnimationTrigger: 
+    spellVfxResourcePath: 
     imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Sunfyre_8436b75801ca4c0f8d3e456c596e4b82.png
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireDragon_Prefab
@@ -556,6 +558,8 @@ MonoBehaviour:
     health: 23
     damage: 2
     mana: 4
+    spellAnimationTrigger: 
+    spellVfxResourcePath: 
     imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Seraphina_76754bb9c4c14da688dd911134fb4ea4.png
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireMermaid_Prefab
@@ -565,9 +569,22 @@ MonoBehaviour:
     health: 23
     damage: 2
     mana: 4
+    spellAnimationTrigger: 
+    spellVfxResourcePath: 
     imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Cinder_d0a4045a55264f6abaa02ad68c8eb21d.png
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireTroll_Prefab
+  - cardName: Fireball
+    quantity: 1
+    cardType: Spell
+    health: 0
+    damage: 0
+    mana: 0
+    spellAnimationTrigger: CastFireball
+    spellVfxResourcePath: Assets/Resources/Effects/FireAttackVFX.prefab
+    imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Fireball_8cf9abd7eea94eb69f3cc83328458bcf.png
+    targetWidthMeters: 0.06
+    modelResourcePath: 
 --- !u!114 &894206190
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -587,6 +604,8 @@ MonoBehaviour:
   addCardDetectorToRuntimeTargets: 1
   addSummonOnTargetFoundToRuntimeTargets: 1
   defaultRuntimeCreaturePrefab: {fileID: 3525536196938450821, guid: 8b13f26c65ca31c4189a91ad87f1b824, type: 3}
+  enableSpellCardAnimations: 1
+  defaultSpellAnimationTrigger: CastFireball
   healthIcon: {fileID: 21300000, guid: 92e0bf15b84df3f499566955b3a052c2, type: 3}
   manaIcon: {fileID: 21300000, guid: 811af7f954193f64aadb991d29bd8915, type: 3}
   damageIcon: {fileID: 21300000, guid: 5a0d7035f08fcc74790ed2ab27309917, type: 3}
@@ -1693,6 +1712,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AttackCardManager
   activeCreature: {fileID: 0}
+  attackCardVisible: 0
 --- !u!114 &1761339505
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1707,6 +1727,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattleFlowManager
   cardObserversToDisable: []
   allCreatures: []
+  _locked: 0
 --- !u!4 &1761339506
 Transform:
   m_ObjectHideFlags: 0

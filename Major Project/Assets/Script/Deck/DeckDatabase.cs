@@ -46,6 +46,12 @@ public class DeckCardEntry
     public int damage;
     public int mana;
 
+    [Header("Spell Animation (optional)")]
+    [Tooltip("Animator trigger to fire when this spell card is detected, e.g. CastFireball.")]
+    public string spellAnimationTrigger;
+    [Tooltip("Optional Resources path for spell VFX prefab, e.g. Effects/FireAttackVFX.")]
+    public string spellVfxResourcePath;
+
     [Header("AR Image Target")]
     [Tooltip("Absolute path to the card image saved on device.")]
     public string imagePath;
@@ -60,6 +66,18 @@ public class DeckCardEntry
             return string.Equals(cardType, MtgCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase);
 
         return string.Equals(cardType, PokemonCardType.Pokemon.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool IsSpellLike(CardGameType gameType)
+    {
+        if (gameType == CardGameType.MTG)
+            return string.Equals(cardType, MtgCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        // Treat these as "spell-like" in Pokemon flow:
+        return
+            string.Equals(cardType, PokemonCardType.Trainer.ToString(), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(cardType, PokemonCardType.Item.ToString(), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(cardType, PokemonCardType.Supporter.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     public bool HasImageTarget()
