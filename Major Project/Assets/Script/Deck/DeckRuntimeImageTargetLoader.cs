@@ -24,13 +24,17 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     [SerializeField] bool disableSceneTargetsMatchingLoadedDeck = true;
     [SerializeField] GameObject defaultRuntimeCreaturePrefab;
 
+    [Header("Ability Cards")]
+    [SerializeField] bool enableFireballAbilityCards = true;
+    [SerializeField] string fireballAbilityCardKeyword = "fireball";
+
     [Header("Runtime Model Overrides")]
     [Tooltip("Optional card-name-to-prefab mapping for cards loaded from the deck. Use this when a saved deck card has no modelResourcePath.")]
     [SerializeField] List<RuntimeCardModelOverride> cardModelOverrides = new();
 
     [Header("Runtime Summon Defaults")]
     [SerializeField] bool useSingleVisibleRuntimeCreatureLock = true;
-    [SerializeField] bool hideRuntimeCreatureOnTargetLost = true;
+    [SerializeField] bool hideRuntimeCreatureOnTargetLost = false;
     [SerializeField] bool createRuntimeFireTornado = true;
     [SerializeField] Vector3 runtimeCreatureStartLocalPos = new(0f, -0.05f, 0f);
     [SerializeField] Vector3 runtimeCreatureEndLocalPos = new(0f, 0f, 0f);
@@ -120,7 +124,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                 continue;
             }
 
-            if (TryCreateVuforiaImageTarget(card, runtimeTargetName))
+            if (TryCreateVuforiaImageTarget(card, runtimeTargetName, deck.gameType))
             {
                 createdCount++;
                 loadedTargetNames.Add(runtimeTargetName);
@@ -142,7 +146,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         return $"{runtimeTargetNamePrefix}{trimmedCardName}";
     }
 
-    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName)
+    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName, CardGameType gameType)
     {
         if (card == null)
             return false;
@@ -180,7 +184,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return false;
         }
 
-        TryAttachRuntimeComponents(createdObserver, card);
+        TryAttachRuntimeComponents(createdObserver, card, gameType);
         createdRuntimeTargetObjects.Add(createdObserver.gameObject);
 
         Debug.Log(
@@ -261,16 +265,20 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         Debug.Log("Loaded runtime targets: " + string.Join(", ", loadedTargetNames));
     }
 
-    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card)
+    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card, CardGameType gameType)
     {
         if (createdObserver == null)
             return;
 
         var runtimeObject = createdObserver.gameObject;
+        bool isFireballAbilityCard = IsFireballAbilityCard(card);
+
+        if (isFireballAbilityCard)
+            ConfigureFireballAbilityCard(runtimeObject, card);
 
         SummonOnTargetFound summonComponent = null;
 
-        if (addSummonOnTargetFoundToRuntimeTargets)
+        if (addSummonOnTargetFoundToRuntimeTargets && ShouldCreateSummonForCard(card, gameType, isFireballAbilityCard))
         {
             summonComponent = runtimeObject.GetComponent<SummonOnTargetFound>();
 
@@ -332,6 +340,54 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             runtimeObject.AddComponent<CardDetector>();
             Debug.Log($"Added CardDetector to runtime target '{createdObserver.TargetName}'.");
         }
+    }
+
+    void ConfigureFireballAbilityCard(GameObject runtimeObject, DeckCardEntry card)
+    {
+        if (runtimeObject == null)
+            return;
+
+        var fireballTarget = runtimeObject.GetComponent<FireballAbilityCardTarget>();
+        if (fireballTarget == null)
+        {
+            fireballTarget = runtimeObject.AddComponent<FireballAbilityCardTarget>();
+            Debug.Log($"Added FireballAbilityCardTarget to runtime target '{runtimeObject.name}'.");
+        }
+
+        fireballTarget.Configure(card);
+        Debug.Log($"Configured '{runtimeObject.name}' as a fireball ability card. Scan it to arm the visible creature.");
+    }
+
+    bool ShouldCreateSummonForCard(DeckCardEntry card, CardGameType gameType, bool isFireballAbilityCard)
+    {
+        if (card == null || isFireballAbilityCard)
+            return false;
+
+        if (card.NeedsCombatStats(gameType) || card.HasModelResourcePath())
+            return true;
+
+        if (ResolveModelOverrideForCard(card) != null)
+            return true;
+
+        if (ResolveModelPrefabByConvention(card) != null)
+            return true;
+
+        return false;
+    }
+
+    bool IsFireballAbilityCard(DeckCardEntry card)
+    {
+        if (!enableFireballAbilityCards || card == null)
+            return false;
+
+        string cardName = card.cardName ?? string.Empty;
+        string keyword = fireballAbilityCardKeyword ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(keyword) &&
+            cardName.IndexOf(keyword.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+
+        return string.Equals(card.cardType, MtgCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase) &&
+            card.HasFireballSfxPath();
     }
 
     void ConfigureRuntimeSummon(SummonOnTargetFound summonComponent, Transform runtimeTarget, DeckCardEntry card)

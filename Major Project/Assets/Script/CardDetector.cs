@@ -7,12 +7,13 @@ public class CardDetector : MonoBehaviour
 
     private ObserverBehaviour observerBehaviour;
     private SummonOnTargetFound summonOnTargetFound;
+    private FireballAbilityCardTarget fireballAbilityCardTarget;
     private bool wasTracked;
 
     private void Awake()
     {
         observerBehaviour = GetComponent<ObserverBehaviour>();
-        FindSummonScript();
+        FindTargetScripts();
     }
 
     private void OnEnable()
@@ -32,7 +33,7 @@ public class CardDetector : MonoBehaviour
         if (observerBehaviour == null)
             Debug.LogWarning($"[CardDetector] Missing ObserverBehaviour on '{gameObject.name}'.", this);
 
-        if (summonOnTargetFound == null)
+        if (summonOnTargetFound == null && fireballAbilityCardTarget == null)
             Debug.LogWarning($"[CardDetector] No SummonOnTargetFound found yet for '{gameObject.name}'. Will try again when card is detected.", this);
     }
 
@@ -51,10 +52,13 @@ public class CardDetector : MonoBehaviour
             Speak(cardName);
 
             if (summonOnTargetFound == null)
-                FindSummonScript();
+                FindTargetScripts();
 
             if (summonOnTargetFound == null)
             {
+                if (fireballAbilityCardTarget != null)
+                    return;
+
                 Debug.LogWarning($"[CardDetector] Card was detected, but no SummonOnTargetFound exists on '{gameObject.name}'.", this);
                 return;
             }
@@ -67,13 +71,13 @@ public class CardDetector : MonoBehaviour
             Debug.Log("[CardDetector] Lost card: " + behaviour.TargetName, this);
 
             if (summonOnTargetFound == null)
-                FindSummonScript();
+                FindTargetScripts();
 
             summonOnTargetFound?.OnLost();
         }
     }
 
-    private void FindSummonScript()
+    private void FindTargetScripts()
     {
         summonOnTargetFound = GetComponent<SummonOnTargetFound>();
 
@@ -82,6 +86,14 @@ public class CardDetector : MonoBehaviour
 
         if (summonOnTargetFound == null)
             summonOnTargetFound = GetComponentInParent<SummonOnTargetFound>();
+
+        fireballAbilityCardTarget = GetComponent<FireballAbilityCardTarget>();
+
+        if (fireballAbilityCardTarget == null)
+            fireballAbilityCardTarget = GetComponentInChildren<FireballAbilityCardTarget>(true);
+
+        if (fireballAbilityCardTarget == null)
+            fireballAbilityCardTarget = GetComponentInParent<FireballAbilityCardTarget>();
     }
 
     private void Speak(string text)

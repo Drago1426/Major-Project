@@ -18,6 +18,8 @@ public class CardStatsDisplay3D : MonoBehaviour
     [SerializeField] float iconSpacing = 0.075f;
     [SerializeField] int fontSize = 30;
     [SerializeField] Color textColor = Color.white;
+    [SerializeField] Color outlineColor = Color.black;
+    [SerializeField] float outlineOffset = 0.0015f;
 
     [Header("Billboard")]
     [SerializeField] bool faceCamera = true;
@@ -89,23 +91,35 @@ public class CardStatsDisplay3D : MonoBehaviour
         iconRenderer.sprite = icon;
         iconRenderer.sortingOrder = 10;
 
-        GameObject textObject = new GameObject(label + " Text");
-        textObject.transform.SetParent(iconGroup.transform, false);
+        string valueText = value.ToString();
+        Vector3 textPosition = new Vector3(0f, 0f, -0.01f);
 
-        // Slightly in front of the icon so the text renders on top.
-        textObject.transform.localPosition = new Vector3(0f, 0f, -0.01f);
+        CreateTextMesh(label + " Outline Left", iconGroup.transform, valueText, textPosition + new Vector3(-outlineOffset, 0f, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Outline Right", iconGroup.transform, valueText, textPosition + new Vector3(outlineOffset, 0f, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Outline Up", iconGroup.transform, valueText, textPosition + new Vector3(0f, outlineOffset, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Outline Down", iconGroup.transform, valueText, textPosition + new Vector3(0f, -outlineOffset, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Outline Up Left", iconGroup.transform, valueText, textPosition + new Vector3(-outlineOffset, outlineOffset, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Outline Up Right", iconGroup.transform, valueText, textPosition + new Vector3(outlineOffset, outlineOffset, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Outline Down Left", iconGroup.transform, valueText, textPosition + new Vector3(-outlineOffset, -outlineOffset, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Outline Down Right", iconGroup.transform, valueText, textPosition + new Vector3(outlineOffset, -outlineOffset, 0f), outlineColor, 11);
+        CreateTextMesh(label + " Text", iconGroup.transform, valueText, textPosition, textColor, 12);
+    }
+
+    void CreateTextMesh(string objectName, Transform parent, string value, Vector3 localPosition, Color color, int sortingOrder)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+        textObject.transform.localPosition = localPosition;
         textObject.transform.localScale = Vector3.one * 0.01f;
 
         TextMesh textMesh = textObject.AddComponent<TextMesh>();
-        textMesh.text = value.ToString();
+        textMesh.text = value;
         textMesh.fontSize = fontSize;
-        textMesh.color = textColor;
-
-        // This centers the text in the middle of the icon.
+        textMesh.color = color;
         textMesh.anchor = TextAnchor.MiddleCenter;
         textMesh.alignment = TextAlignment.Center;
 
         MeshRenderer textRenderer = textObject.GetComponent<MeshRenderer>();
-        textRenderer.sortingOrder = 11;
+        textRenderer.sortingOrder = sortingOrder;
     }
 }

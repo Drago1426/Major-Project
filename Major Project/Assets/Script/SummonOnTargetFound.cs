@@ -22,7 +22,7 @@ public class SummonOnTargetFound : MonoBehaviour
     public float riseDuration = 0.6f;
 
     [Header("Behaviour")]
-    public bool hideOnTargetLost = true;
+    public bool hideOnTargetLost = false;
     public bool useSingleVisibleCreatureLock = true;
     public bool createFireTornadoIfMissing = true;
     public float fireTornadoStopDelay = 0.15f;
@@ -74,11 +74,26 @@ public class SummonOnTargetFound : MonoBehaviour
         if (_routine != null) StopCoroutine(_routine);
         _routine = null;
 
-        _hasSummoned = false;
         if (fireTornadoVfx != null)
             fireTornadoVfx.Stop(true);
 
-        if (!hideOnTargetLost || creature == null) return;
+        if (!hideOnTargetLost)
+        {
+            if (creature != null && creature.activeInHierarchy)
+            {
+                creature.transform.localPosition = endLocalPos;
+                _hasSummoned = true;
+            }
+            else
+            {
+                _hasSummoned = false;
+            }
+
+            return;
+        }
+
+        _hasSummoned = false;
+        if (creature == null) return;
 
         creature.SetActive(false);
         creature.transform.localPosition = startLocalPos;

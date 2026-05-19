@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
 
@@ -5,6 +6,8 @@ using UnityEngine;
 public class DeckBuilderManagerEditor : Editor
 {
     SerializedProperty deckDatabase;
+    SerializedProperty runtimeTargetLoader;
+    SerializedProperty reloadRuntimeTargetsAfterSave;
     SerializedProperty deckName;
     SerializedProperty selectedGameType;
     SerializedProperty cardName;
@@ -24,9 +27,16 @@ public class DeckBuilderManagerEditor : Editor
     SerializedProperty mana;
     SerializedProperty workingCards;
 
+    static bool showModelOptions;
+    static bool showAudioPaths;
+    static bool showRuntimeReload;
+    static bool showWorkingCards = true;
+
     void OnEnable()
     {
         deckDatabase = serializedObject.FindProperty("deckDatabase");
+        runtimeTargetLoader = serializedObject.FindProperty("runtimeTargetLoader");
+        reloadRuntimeTargetsAfterSave = serializedObject.FindProperty("reloadRuntimeTargetsAfterSave");
         deckName = serializedObject.FindProperty("deckName");
         selectedGameType = serializedObject.FindProperty("selectedGameType");
         cardName = serializedObject.FindProperty("cardName");
@@ -51,72 +61,107 @@ public class DeckBuilderManagerEditor : Editor
     {
         serializedObject.Update();
 
-        EditorGUILayout.PropertyField(deckDatabase);
-        EditorGUILayout.Space(8);
+        DrawDeckSection();
+        DrawCardSection();
+        DrawWorkingDeckSection();
+        DrawActionButtons();
 
-        EditorGUILayout.LabelField("Current Deck", EditorStyles.boldLabel);
+        serializedObject.ApplyModifiedProperties();
+    }
+
+    void DrawDeckSection()
+    {
+        EditorGUILayout.LabelField("Deck", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(deckDatabase);
         EditorGUILayout.PropertyField(deckName);
         EditorGUILayout.PropertyField(selectedGameType);
 
+        showRuntimeReload = EditorGUILayout.Foldout(showRuntimeReload, "Runtime Reload", true);
+        if (showRuntimeReload)
+        {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(runtimeTargetLoader);
+            EditorGUILayout.PropertyField(reloadRuntimeTargetsAfterSave);
+            EditorGUI.indentLevel--;
+        }
+
         EditorGUILayout.Space(8);
-        EditorGUILayout.LabelField("Card Input", EditorStyles.boldLabel);
+    }
+
+    void DrawCardSection()
+    {
+        EditorGUILayout.LabelField("Card", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(cardName);
         EditorGUILayout.PropertyField(quantity);
 
         var gameType = (CardGameType)selectedGameType.enumValueIndex;
-        if (gameType == CardGameType.MTG)
-            EditorGUILayout.PropertyField(mtgCardType);
-        else
-            EditorGUILayout.PropertyField(pokemonCardType);
-
+        EditorGUILayout.PropertyField(gameType == CardGameType.MTG ? mtgCardType : pokemonCardType);
         EditorGUILayout.PropertyField(cardImage);
-        EditorGUILayout.PropertyField(targetWidthMeters);
-        EditorGUILayout.PropertyField(cardModelPrefab);
-        EditorGUILayout.PropertyField(cardModelResourcePath);
-        EditorGUILayout.HelpBox("Drag a prefab into Card Model Prefab (must be under a Resources folder). If empty, Card Model Resource Path is used.", MessageType.None);
-
-        EditorGUILayout.Space(8);
-        EditorGUILayout.LabelField("Card Audio", EditorStyles.boldLabel);
-        EditorGUILayout.PropertyField(cardSummonSfxClip);
-        EditorGUILayout.PropertyField(cardSummonSfxPath);
-        EditorGUILayout.PropertyField(cardFireballSfxClip);
-        EditorGUILayout.PropertyField(cardFireballSfxPath);
-        EditorGUILayout.HelpBox("For no-rebuild deck edits, use audio file paths. In the Editor, dragged clips are copied into persistent deck audio when you add the card.", MessageType.None);
 
         var manager = (DeckBuilderManager)target;
         if (manager.CurrentCardNeedsCombatStats())
         {
-            EditorGUILayout.HelpBox("This card type needs Health, Damage, and Mana.", MessageType.Info);
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Stats", EditorStyles.miniBoldLabel);
             EditorGUILayout.PropertyField(health);
             EditorGUILayout.PropertyField(damage);
             EditorGUILayout.PropertyField(mana);
         }
 
+        showModelOptions = EditorGUILayout.Foldout(showModelOptions, "Model And Target", true);
+        if (showModelOptions)
+        {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(targetWidthMeters);
+            EditorGUILayout.PropertyField(cardModelPrefab);
+            EditorGUILayout.PropertyField(cardModelResourcePath);
+            EditorGUI.indentLevel--;
+        }
+
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Sounds", EditorStyles.miniBoldLabel);
+        EditorGUILayout.PropertyField(cardSummonSfxClip);
+        EditorGUILayout.PropertyField(cardFireballSfxClip);
+
+        showAudioPaths = EditorGUILayout.Foldout(showAudioPaths, "Sound File Paths", true);
+        if (showAudioPaths)
+        {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(cardSummonSfxPath);
+            EditorGUILayout.PropertyField(cardFireballSfxPath);
+            EditorGUI.indentLevel--;
+        }
+
         EditorGUILayout.Space(8);
-        EditorGUILayout.PropertyField(workingCards, true);
+    }
 
-        EditorGUILayout.Space(10);
-        DrawActionButtons();
+    void DrawWorkingDeckSection()
+    {
+        int count = workingCards != null && workingCards.isArray ? workingCards.arraySize : 0;
+        showWorkingCards = EditorGUILayout.Foldout(showWorkingCards, $"Working Deck ({count})", true);
+        if (showWorkingCards)
+        {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(workingCards, true);
+            EditorGUI.indentLevel--;
+        }
 
-        serializedObject.ApplyModifiedProperties();
+        EditorGUILayout.Space(8);
     }
 
     void DrawActionButtons()
     {
         var manager = (DeckBuilderManager)target;
 
-        EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
-
         EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Add Card"))
+        if (GUILayout.Button("Add Card", GUILayout.Height(28)))
         {
             serializedObject.ApplyModifiedProperties();
-            bool added = manager.TryAddCardToWorkingDeck();
-            if (added)
+            if (manager.TryAddCardToWorkingDeck())
                 EditorUtility.SetDirty(manager);
         }
 
-        if (GUILayout.Button("Clear Working Deck"))
+        if (GUILayout.Button("Clear", GUILayout.Height(28)))
         {
             serializedObject.ApplyModifiedProperties();
             manager.ClearWorkingDeck();
@@ -124,7 +169,7 @@ public class DeckBuilderManagerEditor : Editor
         }
         EditorGUILayout.EndHorizontal();
 
-        if (GUILayout.Button("Save Working Deck"))
+        if (GUILayout.Button("Save Deck", GUILayout.Height(32)))
         {
             serializedObject.ApplyModifiedProperties();
             manager.TrySaveWorkingDeck();
@@ -132,3 +177,4 @@ public class DeckBuilderManagerEditor : Editor
         }
     }
 }
+#endif

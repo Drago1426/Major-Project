@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class CreatureInteractable : MonoBehaviour
@@ -17,8 +18,12 @@ public class CreatureInteractable : MonoBehaviour
 
     [Header("Fireball")]
     public bool shootFireballOnTap = true;
+    public bool requireFireballCardToInteract = true;
     public float fireballDistance = 0.38f;
     public float fireballTravelTime = 0.32f;
+    public Color armedGlowColor = new Color(1f, 0.82f, 0.05f, 1f);
+    public float armedGlowIntensity = 2.5f;
+    [Range(0f, 1f)] public float armedGlowTint = 0.35f;
 
     [Header("Bounce")]
     public float bounceScale = 1.15f;
@@ -27,8 +32,17 @@ public class CreatureInteractable : MonoBehaviour
     Vector3 _baseScale;
     Coroutine _bounceRoutine;
     Coroutine _audioLoadRoutine;
+    Coroutine _glowOffRoutine;
+    GameObject _armedGlowObject;
+    ParticleSystem _armedGlowParticles;
+    Light _armedGlowLight;
     ParticleSystem[] _defaultTapVfx;
     AudioClip[] _proceduralTapSfx;
+    AudioClip _armedFireballSfx;
+    bool _fireballArmed;
+    string _armedByCardName;
+    readonly List<MaterialGlowState> _glowStates = new();
+    static readonly List<CreatureInteractable> ActiveCreatures = new();
 
     void Awake()
     {
@@ -42,7 +56,17 @@ public class CreatureInteractable : MonoBehaviour
 
     void OnEnable()
     {
+        RegisterActiveCreature(this);
         LoadConfiguredFireballClip();
+
+        if (_fireballArmed)
+            SetArmedGlow(true);
+    }
+
+    void OnDisable()
+    {
+        UnregisterActiveCreature(this);
+        DisarmFireballInteraction(false);
     }
 
     public void OnTapped()
@@ -52,6 +76,12 @@ public class CreatureInteractable : MonoBehaviour
 
     public void OnTapped(Vector3 hitWorldPosition)
     {
+        if (requireFireballCardToInteract && !_fireballArmed)
+            return;
+
+        bool consumedArmedFireball = _fireballArmed;
+        _fireballArmed = false;
+
         if (shootFireballOnTap)
             FireballProjectileVfx.Play(transform, hitWorldPosition, fireballDistance, fireballTravelTime);
 
@@ -64,6 +94,9 @@ public class CreatureInteractable : MonoBehaviour
         var combat = GetComponent<CreatureCombat>();
         if (combat != null)
             combat.TryAttack();
+
+        if (consumedArmedFireball)
+            DisableGlowAfterShot();
     }
 
     void PlayRandomParticle(Vector3 hitWorldPosition)
@@ -89,7 +122,10 @@ public class CreatureInteractable : MonoBehaviour
         if (audioSource == null)
             return;
 
-        AudioClip clip = Pick(randomFireballSfx);
+        AudioClip clip = _armedFireballSfx;
+
+        if (clip == null)
+            clip = Pick(randomFireballSfx);
 
         if (clip == null)
             clip = fireballSfx;
@@ -113,6 +149,63 @@ public class CreatureInteractable : MonoBehaviour
         LoadConfiguredFireballClip();
     }
 
+    public void ArmFireballInteraction(string sourceCardName, string overrideSfxPath)
+    {
+        _fireballArmed = true;
+        _armedByCardName = string.IsNullOrWhiteSpace(sourceCardName) ? "Fireball" : sourceCardName.Trim();
+        SetArmedGlow(true);
+
+        _armedFireballSfx = null;
+        string armedFireballSfxPath = string.IsNullOrWhiteSpace(overrideSfxPath) ? string.Empty : overrideSfxPath.Trim();
+        if (!string.IsNullOrWhiteSpace(armedFireballSfxPath))
+            StartCoroutine(RuntimeAudioClipLoader.Load(armedFireballSfxPath, clip => _armedFireballSfx = clip));
+
+        Debug.Log($"'{gameObject.name}' armed by {_armedByCardName}. Click the model to fire.", this);
+    }
+
+    public void DisarmFireballInteraction(bool keepGlowUntilShotEnds)
+    {
+        _fireballArmed = false;
+        _armedByCardName = string.Empty;
+        _armedFireballSfx = null;
+        if (keepGlowUntilShotEnds)
+            DisableGlowAfterShot();
+        else
+            SetArmedGlow(false);
+    }
+
+    public static bool TryArmFirstActiveFireball(string sourceCardName, string overrideSfxPath)
+    {
+        for (int i = ActiveCreatures.Count - 1; i >= 0; i--)
+        {
+            var creature = ActiveCreatures[i];
+            if (creature == null)
+            {
+                ActiveCreatures.RemoveAt(i);
+                continue;
+            }
+
+            if (!creature.isActiveAndEnabled || !creature.gameObject.activeInHierarchy)
+                continue;
+
+            creature.ArmFireballInteraction(sourceCardName, overrideSfxPath);
+            return true;
+        }
+
+        return false;
+    }
+
+    static void RegisterActiveCreature(CreatureInteractable creature)
+    {
+        if (creature != null && !ActiveCreatures.Contains(creature))
+            ActiveCreatures.Add(creature);
+    }
+
+    static void UnregisterActiveCreature(CreatureInteractable creature)
+    {
+        ActiveCreatures.Remove(creature);
+    }
+
     void LoadConfiguredFireballClip()
     {
         if (string.IsNullOrWhiteSpace(fireballSfxPath) || !isActiveAndEnabled)
@@ -126,6 +219,263 @@ public class CreatureInteractable : MonoBehaviour
             fireballSfx = clip;
             _audioLoadRoutine = null;
         }));
+    }
+
+    void DisableGlowAfterShot()
+    {
+        if (_glowOffRoutine != null)
+            StopCoroutine(_glowOffRoutine);
+
+        _glowOffRoutine = StartCoroutine(DisableGlowAfterDelay(Mathf.Max(0.05f, fireballTravelTime)));
+    }
+
+    IEnumerator DisableGlowAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        SetArmedGlow(false);
+        _glowOffRoutine = null;
+    }
+
+    void SetArmedGlow(bool enabled)
+    {
+        if (enabled)
+        {
+            ApplyArmedGlow();
+            return;
+        }
+
+        RestoreGlow();
+    }
+
+    void ApplyArmedGlow()
+    {
+        EnsureArmedGlowObject();
+        SetVisibleArmedGlow(true);
+
+        if (_glowStates.Count > 0)
+            return;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            var renderer = renderers[i];
+            if (renderer == null || renderer is ParticleSystemRenderer || IsStatsDisplayRenderer(renderer))
+                continue;
+
+            var materials = renderer.materials;
+            for (int j = 0; j < materials.Length; j++)
+            {
+                var material = materials[j];
+                if (material == null)
+                    continue;
+
+                var state = new MaterialGlowState(material);
+                _glowStates.Add(state);
+
+                Color baseColor = state.CurrentBaseColor;
+                state.SetBaseColor(Color.Lerp(baseColor, armedGlowColor, armedGlowTint));
+                state.SetEmission(armedGlowColor * Mathf.Max(0f, armedGlowIntensity));
+            }
+        }
+    }
+
+    void RestoreGlow()
+    {
+        if (_glowOffRoutine != null)
+        {
+            StopCoroutine(_glowOffRoutine);
+            _glowOffRoutine = null;
+        }
+
+        for (int i = 0; i < _glowStates.Count; i++)
+            _glowStates[i].Restore();
+
+        _glowStates.Clear();
+        SetVisibleArmedGlow(false);
+    }
+
+    void EnsureArmedGlowObject()
+    {
+        if (_armedGlowObject != null)
+            return;
+
+        Bounds bounds = CalculateVisualBounds();
+        float radius = Mathf.Max(0.035f, Mathf.Max(bounds.extents.x, bounds.extents.z) * 1.15f);
+        float height = Mathf.Max(0.04f, bounds.size.y);
+
+        _armedGlowObject = new GameObject("Fireball Armed Glow");
+        _armedGlowObject.transform.SetParent(transform, false);
+        _armedGlowObject.transform.localPosition = transform.InverseTransformPoint(bounds.center);
+        _armedGlowObject.transform.localRotation = Quaternion.identity;
+        _armedGlowObject.transform.localScale = Vector3.one;
+
+        _armedGlowLight = _armedGlowObject.AddComponent<Light>();
+        _armedGlowLight.type = LightType.Point;
+        _armedGlowLight.color = armedGlowColor;
+        _armedGlowLight.intensity = Mathf.Max(0.25f, armedGlowIntensity * 0.65f);
+        _armedGlowLight.range = Mathf.Max(0.18f, height * 2.2f);
+
+        _armedGlowParticles = CreateArmedGlowParticles(_armedGlowObject.transform, radius, height);
+        SetVisibleArmedGlow(false);
+    }
+
+    ParticleSystem CreateArmedGlowParticles(Transform parent, float radius, float height)
+    {
+        var system = parent.gameObject.AddComponent<ParticleSystem>();
+        var main = system.main;
+        main.playOnAwake = false;
+        main.loop = true;
+        main.duration = 1.2f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 0.9f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.015f, 0.045f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.008f, 0.018f);
+        main.startColor = new ParticleSystem.MinMaxGradient(
+            new Color(1f, 0.85f, 0.08f, 0.55f),
+            new Color(1f, 0.98f, 0.28f, 0.85f));
+        main.simulationSpace = ParticleSystemSimulationSpace.Local;
+        main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+
+        var emission = system.emission;
+        emission.enabled = true;
+        emission.rateOverTime = 80f;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)32) });
+
+        var shape = system.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Donut;
+        shape.radius = radius;
+        shape.donutRadius = Mathf.Max(0.004f, radius * 0.18f);
+        shape.randomDirectionAmount = 0.35f;
+
+        var velocity = system.velocityOverLifetime;
+        velocity.enabled = true;
+        velocity.space = ParticleSystemSimulationSpace.Local;
+        velocity.x = 0f;
+        velocity.y = Mathf.Max(0.025f, height * 0.18f);
+        velocity.z = 0f;
+        velocity.orbitalX = 0f;
+        velocity.orbitalY = 4.5f;
+        velocity.orbitalZ = 0f;
+        velocity.radial = 0.01f;
+
+        var color = system.colorOverLifetime;
+        color.enabled = true;
+        color.color = new ParticleSystem.MinMaxGradient(MakeArmedGlowGradient());
+
+        var size = system.sizeOverLifetime;
+        size.enabled = true;
+        size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+            new Keyframe(0f, 0.2f),
+            new Keyframe(0.25f, 1.2f),
+            new Keyframe(1f, 0f)));
+
+        var renderer = system.GetComponent<ParticleSystemRenderer>();
+        renderer.material = RuntimeParticleAssets.CreateParticleMaterial(
+            "Runtime Fireball Armed Glow Particle",
+            RuntimeParticleAssets.SoftDiscTexture,
+            Color.white);
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.sortingFudge = 2f;
+
+        system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        return system;
+    }
+
+    void SetVisibleArmedGlow(bool visible)
+    {
+        if (_armedGlowObject == null)
+            return;
+
+        _armedGlowObject.SetActive(visible);
+
+        if (_armedGlowLight != null)
+            _armedGlowLight.enabled = visible;
+
+        if (_armedGlowParticles == null)
+            return;
+
+        if (visible)
+        {
+            _armedGlowParticles.Clear(true);
+            _armedGlowParticles.Play(true);
+        }
+        else
+        {
+            _armedGlowParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+    }
+
+    Bounds CalculateVisualBounds()
+    {
+        var renderers = GetComponentsInChildren<Renderer>(true);
+        bool hasBounds = false;
+        Bounds bounds = new Bounds(transform.position, Vector3.one * 0.08f);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            var renderer = renderers[i];
+            if (renderer == null || renderer is ParticleSystemRenderer || IsStatsDisplayRenderer(renderer))
+                continue;
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        return bounds;
+    }
+
+    bool IsStatsDisplayRenderer(Renderer renderer)
+    {
+        if (renderer == null)
+            return false;
+
+        if (renderer.GetComponent<TextMesh>() != null)
+            return true;
+
+        if (renderer is SpriteRenderer && HasParentNamed(renderer.transform, "Card Stats Display"))
+            return true;
+
+        return false;
+    }
+
+    bool HasParentNamed(Transform current, string objectName)
+    {
+        while (current != null)
+        {
+            if (current.name == objectName)
+                return true;
+
+            current = current.parent;
+        }
+
+        return false;
+    }
+
+    Gradient MakeArmedGlowGradient()
+    {
+        var gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(new Color(1f, 0.92f, 0.12f), 0f),
+                new GradientColorKey(new Color(1f, 0.55f, 0.02f), 0.7f),
+                new GradientColorKey(new Color(1f, 0.15f, 0.01f), 1f)
+            },
+            new[]
+            {
+                new GradientAlphaKey(0f, 0f),
+                new GradientAlphaKey(0.85f, 0.18f),
+                new GradientAlphaKey(0.65f, 0.65f),
+                new GradientAlphaKey(0f, 1f)
+            });
+        return gradient;
     }
 
     T Pick<T>(T[] options) where T : Object
@@ -314,5 +664,76 @@ public class CreatureInteractable : MonoBehaviour
 
         transform.localScale = _baseScale;
         _bounceRoutine = null;
+    }
+
+    readonly struct MaterialGlowState
+    {
+        readonly Material material;
+        readonly bool hasBaseColor;
+        readonly bool hasColor;
+        readonly bool hasEmission;
+        readonly Color baseColor;
+        readonly Color color;
+        readonly Color emissionColor;
+
+        public Color CurrentBaseColor
+        {
+            get
+            {
+                if (material == null)
+                    return Color.white;
+
+                if (hasBaseColor)
+                    return material.GetColor("_BaseColor");
+
+                return hasColor ? material.color : Color.white;
+            }
+        }
+
+        public MaterialGlowState(Material sourceMaterial)
+        {
+            material = sourceMaterial;
+            hasBaseColor = material != null && material.HasProperty("_BaseColor");
+            hasColor = material != null && material.HasProperty("_Color");
+            hasEmission = material != null && material.HasProperty("_EmissionColor");
+            baseColor = hasBaseColor ? material.GetColor("_BaseColor") : Color.white;
+            color = hasColor ? material.color : Color.white;
+            emissionColor = hasEmission ? material.GetColor("_EmissionColor") : Color.black;
+        }
+
+        public void SetBaseColor(Color newColor)
+        {
+            if (material == null)
+                return;
+
+            if (hasBaseColor)
+                material.SetColor("_BaseColor", newColor);
+            else if (hasColor)
+                material.color = newColor;
+        }
+
+        public void SetEmission(Color newEmission)
+        {
+            if (material == null || !hasEmission)
+                return;
+
+            material.EnableKeyword("_EMISSION");
+            material.SetColor("_EmissionColor", newEmission);
+        }
+
+        public void Restore()
+        {
+            if (material == null)
+                return;
+
+            if (hasBaseColor)
+                material.SetColor("_BaseColor", baseColor);
+
+            if (hasColor)
+                material.color = color;
+
+            if (hasEmission)
+                material.SetColor("_EmissionColor", emissionColor);
+        }
     }
 }
