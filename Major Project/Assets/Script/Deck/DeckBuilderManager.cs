@@ -10,6 +10,8 @@ public class DeckBuilderManager : MonoBehaviour
 {
     [Header("Database")]
     [SerializeField] DeckDatabase deckDatabase;
+    [SerializeField] DeckRuntimeImageTargetLoader runtimeTargetLoader;
+    [SerializeField] bool reloadRuntimeTargetsAfterSave = true;
 
     [Header("Current Deck")]
     [SerializeField] string deckName = "My Deck";
@@ -25,6 +27,14 @@ public class DeckBuilderManager : MonoBehaviour
     [SerializeField] GameObject cardModelPrefab;
     [Tooltip("Optional Resources path for this card's summon prefab, e.g. Creatures/Dragon.")]
     [SerializeField] string cardModelResourcePath = "";
+
+    [Header("Card Audio")]
+    [SerializeField] AudioClip cardSummonSfxClip;
+    [Tooltip("Optional absolute file path or Resources path for this card's summon sound.")]
+    [SerializeField] string cardSummonSfxPath = "";
+    [SerializeField] AudioClip cardFireballSfxClip;
+    [Tooltip("Optional absolute file path or Resources path for this card's interaction fireball sound.")]
+    [SerializeField] string cardFireballSfxPath = "";
 
     [Header("Only used for Creature / Pokemon cards")]
     [SerializeField] int health = 0;
@@ -78,6 +88,26 @@ public class DeckBuilderManager : MonoBehaviour
     public void SetCardModelPrefab(GameObject modelPrefab)
     {
         cardModelPrefab = modelPrefab;
+    }
+
+    public void SetCardSummonSfxPath(string soundPath)
+    {
+        cardSummonSfxPath = soundPath;
+    }
+
+    public void SetCardFireballSfxPath(string soundPath)
+    {
+        cardFireballSfxPath = soundPath;
+    }
+
+    public void SetCardSummonSfxClip(AudioClip clip)
+    {
+        cardSummonSfxClip = clip;
+    }
+
+    public void SetCardFireballSfxClip(AudioClip clip)
+    {
+        cardFireballSfxClip = clip;
     }
 
     public void SetMtgCardType(int cardTypeIndex)
@@ -134,6 +164,8 @@ public class DeckBuilderManager : MonoBehaviour
         }
 
         string resolvedModelResourcePath = ResolveModelResourcePathForCurrentCard();
+        string resolvedSummonSfxPath = ResolveAudioPathForCurrentCard(cardSummonSfxClip, cardSummonSfxPath, cardName, "summon");
+        string resolvedFireballSfxPath = ResolveAudioPathForCurrentCard(cardFireballSfxClip, cardFireballSfxPath, cardName, "fireball");
         var card = new DeckCardEntry
         {
             cardName = cardName.Trim(),
@@ -143,7 +175,9 @@ public class DeckBuilderManager : MonoBehaviour
             damage = damage,
             mana = mana,
             targetWidthMeters = targetWidthMeters,
-            modelResourcePath = resolvedModelResourcePath
+            modelResourcePath = resolvedModelResourcePath,
+            summonSfxPath = resolvedSummonSfxPath,
+            fireballSfxPath = resolvedFireballSfxPath
         };
 
         if (card.NeedsCombatStats(selectedGameType) && (health <= 0 || damage <= 0 || mana < 0))
@@ -211,6 +245,15 @@ public class DeckBuilderManager : MonoBehaviour
 
         deckDatabase.AddOrUpdateDeck(deck);
         Debug.Log($"Saved deck '{deck.deckName}' with {deck.cards.Count} card entries.");
+
+        if (runtimeTargetLoader != null)
+        {
+            runtimeTargetLoader.SetDeckIdToLoad(deck.deckId);
+
+            if (reloadRuntimeTargetsAfterSave && Application.isPlaying)
+                runtimeTargetLoader.ReloadRuntimeDeck();
+        }
+
         return true;
     }
 
@@ -310,6 +353,22 @@ public class DeckBuilderManager : MonoBehaviour
         return string.IsNullOrWhiteSpace(cardModelResourcePath) ? string.Empty : cardModelResourcePath.Trim();
     }
 
+    string ResolveAudioPathForCurrentCard(AudioClip clip, string explicitPath, string rawCardName, string soundSlot)
+    {
+        if (clip != null)
+        {
+#if UNITY_EDITOR
+            string copiedPath = CopyAudioClipAssetToPersistentPath(clip, rawCardName, soundSlot);
+            if (!string.IsNullOrWhiteSpace(copiedPath))
+                return copiedPath;
+#else
+            Debug.LogWarning("AudioClip drag-and-drop is only available in the Unity Editor. Use an audio file path in runtime builds.");
+#endif
+        }
+
+        return string.IsNullOrWhiteSpace(explicitPath) ? string.Empty : explicitPath.Trim();
+    }
+
 #if UNITY_EDITOR
     string ConvertPrefabToResourcesPath(GameObject prefab)
     {
@@ -331,6 +390,46 @@ public class DeckBuilderManager : MonoBehaviour
         int pathStart = resourcesIndex + resourcesToken.Length;
         string pathWithoutExtension = assetPath.Substring(pathStart);
         return Path.ChangeExtension(pathWithoutExtension, null).Replace("\\", "/");
+    }
+
+    string CopyAudioClipAssetToPersistentPath(AudioClip clip, string rawCardName, string soundSlot)
+    {
+        string assetPath = AssetDatabase.GetAssetPath(clip);
+        if (string.IsNullOrWhiteSpace(assetPath))
+        {
+            Debug.LogWarning($"Selected {soundSlot} audio clip does not have a valid asset path.");
+            return string.Empty;
+        }
+
+        string projectRoot = Directory.GetParent(Application.dataPath)?.FullName;
+        if (string.IsNullOrWhiteSpace(projectRoot))
+        {
+            Debug.LogWarning("Could not resolve the Unity project root to copy the audio file.");
+            return string.Empty;
+        }
+
+        string sourcePath = Path.GetFullPath(Path.Combine(projectRoot, assetPath));
+        if (!File.Exists(sourcePath))
+        {
+            Debug.LogWarning($"Selected {soundSlot} audio file does not exist on disk: {sourcePath}");
+            return string.Empty;
+        }
+
+        string extension = Path.GetExtension(sourcePath);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            Debug.LogWarning($"Selected {soundSlot} audio file needs an extension Unity can load, such as .wav, .mp3, or .ogg.");
+            return string.Empty;
+        }
+
+        string folderPath = Path.Combine(Application.persistentDataPath, "deck_card_audio");
+        Directory.CreateDirectory(folderPath);
+
+        string safeCardName = SanitizeFileName(rawCardName);
+        string safeSlot = SanitizeFileName(soundSlot);
+        string destinationPath = Path.Combine(folderPath, $"{safeCardName}_{safeSlot}_{Guid.NewGuid():N}{extension}");
+        File.Copy(sourcePath, destinationPath, true);
+        return destinationPath;
     }
 #endif
 }

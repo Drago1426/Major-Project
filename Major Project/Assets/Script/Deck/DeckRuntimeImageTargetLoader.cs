@@ -1,22 +1,41 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using Vuforia;
+
+[Serializable]
+public class RuntimeCardModelOverride
+{
+    public string cardName;
+    public GameObject modelPrefab;
+}
 
 public class DeckRuntimeImageTargetLoader : MonoBehaviour
 {
     [SerializeField] DeckDatabase deckDatabase;
     [SerializeField] string deckIdToLoad;
     [SerializeField] bool autoLoadOnStart = true;
+    [SerializeField] bool reloadDatabaseBeforeLoading = true;
     [SerializeField] string runtimeTargetNamePrefix = "runtime_deck_";
     [SerializeField] bool addCardDetectorToRuntimeTargets = true;
     [SerializeField] bool addSummonOnTargetFoundToRuntimeTargets = true;
+    [SerializeField] bool disableSceneTargetsMatchingLoadedDeck = true;
     [SerializeField] GameObject defaultRuntimeCreaturePrefab;
 
-    [Header("Spell Card Animations")]
-    [SerializeField] bool enableSpellCardAnimations = true;
-    [SerializeField] string defaultSpellAnimationTrigger = "Cast";
+    [Header("Runtime Model Overrides")]
+    [Tooltip("Optional card-name-to-prefab mapping for cards loaded from the deck. Use this when a saved deck card has no modelResourcePath.")]
+    [SerializeField] List<RuntimeCardModelOverride> cardModelOverrides = new();
+
+    [Header("Runtime Summon Defaults")]
+    [SerializeField] bool useSingleVisibleRuntimeCreatureLock = true;
+    [SerializeField] bool hideRuntimeCreatureOnTargetLost = true;
+    [SerializeField] bool createRuntimeFireTornado = true;
+    [SerializeField] Vector3 runtimeCreatureStartLocalPos = new(0f, -0.05f, 0f);
+    [SerializeField] Vector3 runtimeCreatureEndLocalPos = new(0f, 0f, 0f);
+    [SerializeField] float runtimeCreatureRiseDuration = 0.6f;
+    [SerializeField] float runtimeFireTornadoStopDelay = 0.15f;
 
     [Header("Runtime Stats Display")]
     [SerializeField] Sprite healthIcon;
@@ -25,6 +44,8 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     [SerializeField] bool addStatsDisplayToRuntimeModels = true;
 
     readonly HashSet<string> loadedTargetNames = new();
+    readonly List<GameObject> createdRuntimeTargetObjects = new();
+    Coroutine reloadRoutine;
 
     void Start()
     {
@@ -38,6 +59,14 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     public void TestLoaderLog()
     {
         Debug.Log($"[DeckRuntimeImageTargetLoader] Test log from '{gameObject.name}'.");
+    }
+
+    public void SetDeckIdToLoad(string deckId, bool reloadAfterChange = false)
+    {
+        deckIdToLoad = string.IsNullOrWhiteSpace(deckId) ? string.Empty : deckId.Trim();
+
+        if (reloadAfterChange)
+            ReloadRuntimeDeck();
     }
 
     [ContextMenu("Load Runtime Image Targets")]
@@ -57,12 +86,18 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return;
         }
 
+        if (reloadDatabaseBeforeLoading)
+            deckDatabase.LoadDecks();
+
         var deck = deckDatabase.GetDeck(deckIdToLoad);
         if (deck == null)
         {
             Debug.LogWarning($"Deck '{deckIdToLoad}' not found.");
             return;
         }
+
+        if (disableSceneTargetsMatchingLoadedDeck)
+            DisableSceneTargetsMatching(deck);
 
         int createdCount = 0;
         int skippedCount = 0;
@@ -85,7 +120,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                 continue;
             }
 
-            if (TryCreateVuforiaImageTarget(card, runtimeTargetName, deck.gameType))
+            if (TryCreateVuforiaImageTarget(card, runtimeTargetName))
             {
                 createdCount++;
                 loadedTargetNames.Add(runtimeTargetName);
@@ -107,7 +142,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         return $"{runtimeTargetNamePrefix}{trimmedCardName}";
     }
 
-    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName, CardGameType gameType)
+    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName)
     {
         if (card == null)
             return false;
@@ -145,12 +180,66 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return false;
         }
 
-        TryAttachRuntimeComponents(createdObserver, card, gameType);
+        TryAttachRuntimeComponents(createdObserver, card);
+        createdRuntimeTargetObjects.Add(createdObserver.gameObject);
 
         Debug.Log(
             $"Created runtime Vuforia target '{runtimeTargetName}' from card '{card.cardName}' " +
             $"(width: {Mathf.Max(0.01f, card.targetWidthMeters):0.###}m).");
         return true;
+    }
+
+    [ContextMenu("Reload Runtime Deck")]
+    public void ReloadRuntimeDeck()
+    {
+        if (!Application.isPlaying)
+        {
+            ClearRuntimeTargets();
+
+            if (deckDatabase != null)
+                deckDatabase.LoadDecks();
+
+            LoadRuntimeImageTargets();
+            return;
+        }
+
+        if (reloadRoutine != null)
+            StopCoroutine(reloadRoutine);
+
+        reloadRoutine = StartCoroutine(ReloadRuntimeDeckRoutine());
+    }
+
+    IEnumerator ReloadRuntimeDeckRoutine()
+    {
+        ClearRuntimeTargets();
+        yield return null;
+
+        if (deckDatabase != null)
+            deckDatabase.LoadDecks();
+
+        LoadRuntimeImageTargets();
+        reloadRoutine = null;
+    }
+
+    [ContextMenu("Clear Runtime Targets")]
+    public void ClearRuntimeTargets()
+    {
+        for (int i = createdRuntimeTargetObjects.Count - 1; i >= 0; i--)
+        {
+            var targetObject = createdRuntimeTargetObjects[i];
+            if (targetObject == null)
+                continue;
+
+            if (Application.isPlaying)
+                Destroy(targetObject);
+            else
+                DestroyImmediate(targetObject);
+        }
+
+        createdRuntimeTargetObjects.Clear();
+        loadedTargetNames.Clear();
+        SummonVisibilityLock.ReleaseAll();
+        Debug.Log("Cleared runtime Vuforia targets loaded from the deck.");
     }
 
     [ContextMenu("Clear Loaded Runtime Target Cache")]
@@ -172,7 +261,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         Debug.Log("Loaded runtime targets: " + string.Join(", ", loadedTargetNames));
     }
 
-    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card, CardGameType gameType)
+    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card)
     {
         if (createdObserver == null)
             return;
@@ -191,6 +280,8 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                 Debug.Log($"Added SummonOnTargetFound to runtime target '{createdObserver.TargetName}'.");
             }
 
+            ConfigureRuntimeSummon(summonComponent, runtimeObject.transform, card);
+
             if (summonComponent.creature == null)
             {
                 GameObject modelPrefab = ResolveModelPrefabForCard(card);
@@ -206,11 +297,9 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                     spawnedCreature.transform.localPosition = summonComponent.startLocalPos;
                     spawnedCreature.transform.localRotation = Quaternion.identity;
                     spawnedCreature.transform.localScale = Vector3.one;
+                    EnsureRuntimeCreatureInteraction(spawnedCreature, card);
                     spawnedCreature.SetActive(false);
                     summonComponent.creature = spawnedCreature;
-
-                    if (summonComponent.creatureAnimator == null)
-                        summonComponent.creatureAnimator = spawnedCreature.GetComponentInChildren<Animator>(true);
 
                     if (addStatsDisplayToRuntimeModels && card != null)
                     {
@@ -229,13 +318,14 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                         );
                     }
 
-                    Debug.Log($"Assigned runtime creature '{spawnedCreature.name}' to target '{createdObserver.TargetName}'.");
+                    Debug.Log($"Assigned runtime creature '{spawnedCreature.name}' to target '{createdObserver.TargetName}' with summon VFX and interaction.");
                 }
             }
+            else
+            {
+                EnsureRuntimeCreatureInteraction(summonComponent.creature, card);
+            }
         }
-
-        if (enableSpellCardAnimations)
-            ConfigureSpellAnimation(createdObserver, card, gameType, summonComponent);
 
         if (addCardDetectorToRuntimeTargets && runtimeObject.GetComponent<CardDetector>() == null)
         {
@@ -244,29 +334,117 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         }
     }
 
-    void ConfigureSpellAnimation(ObserverBehaviour createdObserver, DeckCardEntry card, CardGameType gameType, SummonOnTargetFound summonComponent)
+    void ConfigureRuntimeSummon(SummonOnTargetFound summonComponent, Transform runtimeTarget, DeckCardEntry card)
     {
-        if (createdObserver == null || card == null)
+        if (summonComponent == null)
             return;
 
-        var runtimeObject = createdObserver.gameObject;
-        var spellController = runtimeObject.GetComponent<SpellCardAnimationController>();
-        if (spellController == null)
-            spellController = runtimeObject.AddComponent<SpellCardAnimationController>();
+        summonComponent.hideOnTargetLost = hideRuntimeCreatureOnTargetLost;
+        summonComponent.useSingleVisibleCreatureLock = useSingleVisibleRuntimeCreatureLock;
+        summonComponent.createFireTornadoIfMissing = createRuntimeFireTornado;
+        summonComponent.startLocalPos = runtimeCreatureStartLocalPos;
+        summonComponent.endLocalPos = runtimeCreatureEndLocalPos;
+        summonComponent.riseDuration = Mathf.Max(0.01f, runtimeCreatureRiseDuration);
+        summonComponent.fireTornadoStopDelay = Mathf.Max(0f, runtimeFireTornadoStopDelay);
 
-        Animator spellAnimator = summonComponent != null ? summonComponent.creatureAnimator : null;
-        if (spellAnimator == null && summonComponent != null && summonComponent.creature != null)
-            spellAnimator = summonComponent.creature.GetComponentInChildren<Animator>(true);
+        if (createRuntimeFireTornado && summonComponent.fireTornadoVfx == null && runtimeTarget != null)
+            summonComponent.fireTornadoVfx = FireTornadoSummonVfx.Ensure(runtimeTarget);
 
-        string triggerName = string.IsNullOrWhiteSpace(card.spellAnimationTrigger)
-            ? defaultSpellAnimationTrigger
-            : card.spellAnimationTrigger;
+        if (card != null)
+            summonComponent.SetSummonSfxPath(card.summonSfxPath);
+    }
 
-        GameObject spellVfxPrefab = null;
-        if (!string.IsNullOrWhiteSpace(card.spellVfxResourcePath))
-            spellVfxPrefab = Resources.Load<GameObject>(card.spellVfxResourcePath);
+    void DisableSceneTargetsMatching(DeckData deck)
+    {
+        if (deck?.cards == null || deck.cards.Count == 0)
+            return;
 
-        spellController.ConfigureForRuntimeCard(card.IsSpellLike(gameType), spellAnimator, triggerName, spellVfxPrefab);
+        var deckCardNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < deck.cards.Count; i++)
+        {
+            var card = deck.cards[i];
+            if (card != null && !string.IsNullOrWhiteSpace(card.cardName))
+                deckCardNames.Add(NormalizeTargetName(card.cardName));
+        }
+
+        if (deckCardNames.Count == 0)
+            return;
+
+        var sceneObservers = FindObjectsByType<ObserverBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < sceneObservers.Length; i++)
+        {
+            var observer = sceneObservers[i];
+            if (observer == null)
+                continue;
+
+            if (!string.IsNullOrWhiteSpace(observer.TargetName) &&
+                observer.TargetName.StartsWith(runtimeTargetNamePrefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            string normalizedTargetName = NormalizeTargetName(observer.TargetName);
+            string normalizedObjectName = NormalizeTargetName(observer.gameObject.name);
+            if (!deckCardNames.Contains(normalizedTargetName) && !deckCardNames.Contains(normalizedObjectName))
+                continue;
+
+            observer.enabled = false;
+            observer.gameObject.SetActive(false);
+            Debug.Log($"Disabled scene image target '{observer.gameObject.name}' because runtime deck target loading will handle that card.");
+        }
+    }
+
+    void EnsureRuntimeCreatureInteraction(GameObject creature, DeckCardEntry card)
+    {
+        if (creature == null)
+            return;
+
+        var interactable = creature.GetComponent<CreatureInteractable>();
+        if (interactable == null)
+            interactable = creature.AddComponent<CreatureInteractable>();
+
+        if (card != null)
+            interactable.SetFireballSfxPath(card.fireballSfxPath);
+
+        if (creature.GetComponentInChildren<Collider>(true) == null)
+            AddFittedCollider(creature);
+    }
+
+    void AddFittedCollider(GameObject creature)
+    {
+        var collider = creature.AddComponent<BoxCollider>();
+        var renderers = creature.GetComponentsInChildren<Renderer>(true);
+
+        bool hasBounds = false;
+        Bounds bounds = default;
+
+        foreach (var renderer in renderers)
+        {
+            if (renderer == null || renderer is ParticleSystemRenderer)
+                continue;
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        if (!hasBounds)
+        {
+            collider.center = new Vector3(0f, 0.05f, 0f);
+            collider.size = new Vector3(0.06f, 0.1f, 0.06f);
+            return;
+        }
+
+        Vector3 localSize = creature.transform.InverseTransformVector(bounds.size);
+        collider.center = creature.transform.InverseTransformPoint(bounds.center);
+        collider.size = new Vector3(
+            Mathf.Max(0.02f, Mathf.Abs(localSize.x) * 1.15f),
+            Mathf.Max(0.02f, Mathf.Abs(localSize.y) * 1.15f),
+            Mathf.Max(0.02f, Mathf.Abs(localSize.z) * 1.15f));
     }
 
     GameObject ResolveModelPrefabForCard(DeckCardEntry card)
@@ -280,7 +458,91 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             Debug.LogWarning($"Could not load model prefab from Resources path '{card.modelResourcePath}' for card '{card.cardName}'.");
         }
 
+        var overridePrefab = ResolveModelOverrideForCard(card);
+        if (overridePrefab != null)
+            return overridePrefab;
+
+        var conventionPrefab = ResolveModelPrefabByConvention(card);
+        if (conventionPrefab != null)
+            return conventionPrefab;
+
         return defaultRuntimeCreaturePrefab;
+    }
+
+    GameObject ResolveModelOverrideForCard(DeckCardEntry card)
+    {
+        if (card == null || string.IsNullOrWhiteSpace(card.cardName) || cardModelOverrides == null)
+            return null;
+
+        string cardName = card.cardName.Trim();
+        for (int i = 0; i < cardModelOverrides.Count; i++)
+        {
+            var modelOverride = cardModelOverrides[i];
+            if (modelOverride == null || modelOverride.modelPrefab == null || string.IsNullOrWhiteSpace(modelOverride.cardName))
+                continue;
+
+            if (string.Equals(modelOverride.cardName.Trim(), cardName, StringComparison.OrdinalIgnoreCase))
+                return modelOverride.modelPrefab;
+        }
+
+        return null;
+    }
+
+    GameObject ResolveModelPrefabByConvention(DeckCardEntry card)
+    {
+        if (card == null || string.IsNullOrWhiteSpace(card.cardName))
+            return null;
+
+        string safeName = SanitizeResourceName(card.cardName);
+        string[] candidatePaths =
+        {
+            $"Card Models/{safeName}_Prefab",
+            $"Card Models/{safeName}",
+            $"Card Models/{safeName}_PrefabRoot"
+        };
+
+        for (int i = 0; i < candidatePaths.Length; i++)
+        {
+            var prefab = Resources.Load<GameObject>(candidatePaths[i]);
+            if (prefab != null)
+                return prefab;
+        }
+
+        return null;
+    }
+
+    string SanitizeResourceName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        string safe = value.Trim().Replace(" ", "_");
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+
+        for (int i = 0; i < invalidChars.Length; i++)
+            safe = safe.Replace(invalidChars[i].ToString(), string.Empty);
+
+        return safe;
+    }
+
+    string NormalizeTargetName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        string normalized = value.Trim();
+        if (normalized.StartsWith(runtimeTargetNamePrefix, StringComparison.OrdinalIgnoreCase))
+            normalized = normalized.Substring(runtimeTargetNamePrefix.Length);
+
+        const string imageTargetPrefix = "ImageTarget_";
+        if (normalized.StartsWith(imageTargetPrefix, StringComparison.OrdinalIgnoreCase))
+            normalized = normalized.Substring(imageTargetPrefix.Length);
+
+        normalized = normalized.Replace(" ", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace("-", string.Empty);
+
+        return normalized;
     }
 
     bool TryCreateWithVuforia(Texture2D texture, float widthMeters, string targetName, out ObserverBehaviour createdObserver, out string error)

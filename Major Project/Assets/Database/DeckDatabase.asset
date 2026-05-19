@@ -17,30 +17,12 @@ MonoBehaviour:
     deckName: Test Deck
     gameType: 0
     cards:
-    - cardName: Sunfyre
+    - cardName: melusine
       quantity: 1
       cardType: Creature
       health: 23
       damage: 2
       mana: 4
-      imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Sunfyre_8436b75801ca4c0f8d3e456c596e4b82.png
-      targetWidthMeters: 0.06
-      modelResourcePath: Card Models/FireDragon_Prefab
-    - cardName: Seraphina
-      quantity: 1
-      cardType: Creature
-      health: 23
-      damage: 2
-      mana: 4
-      imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Seraphina_76754bb9c4c14da688dd911134fb4ea4.png
+      imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\melusine_a4f58ca768d04d749da79a53c56aa8d9.png
       targetWidthMeters: 0.06
       modelResourcePath: Card Models/FireMermaid_Prefab
-    - cardName: Cinder
-      quantity: 1
-      cardType: Creature
-      health: 23
-      damage: 2
-      mana: 4
-      imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Cinder_d0a4045a55264f6abaa02ad68c8eb21d.png
-      targetWidthMeters: 0.06
-      modelResourcePath: Card Models/FireTroll_Prefab

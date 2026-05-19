@@ -13,9 +13,9 @@ public class CardStatsDisplay3D : MonoBehaviour
     [SerializeField] int damage;
 
     [Header("Layout")]
-    [SerializeField] Vector3 localOffset = new Vector3(0f, 0.25f, 0f);
+    [SerializeField] Vector3 localOffset = new Vector3(0f, 0.15f, 0f);
     [SerializeField] float iconSize = 0.01f;
-    [SerializeField] float iconSpacing = 0.1f;
+    [SerializeField] float iconSpacing = 0.075f;
     [SerializeField] int fontSize = 30;
     [SerializeField] Color textColor = Color.white;
 

@@ -15,6 +15,10 @@ public class DeckBuilderManagerEditor : Editor
     SerializedProperty targetWidthMeters;
     SerializedProperty cardModelPrefab;
     SerializedProperty cardModelResourcePath;
+    SerializedProperty cardSummonSfxClip;
+    SerializedProperty cardSummonSfxPath;
+    SerializedProperty cardFireballSfxClip;
+    SerializedProperty cardFireballSfxPath;
     SerializedProperty health;
     SerializedProperty damage;
     SerializedProperty mana;
@@ -33,6 +37,10 @@ public class DeckBuilderManagerEditor : Editor
         targetWidthMeters = serializedObject.FindProperty("targetWidthMeters");
         cardModelPrefab = serializedObject.FindProperty("cardModelPrefab");
         cardModelResourcePath = serializedObject.FindProperty("cardModelResourcePath");
+        cardSummonSfxClip = serializedObject.FindProperty("cardSummonSfxClip");
+        cardSummonSfxPath = serializedObject.FindProperty("cardSummonSfxPath");
+        cardFireballSfxClip = serializedObject.FindProperty("cardFireballSfxClip");
+        cardFireballSfxPath = serializedObject.FindProperty("cardFireballSfxPath");
         health = serializedObject.FindProperty("health");
         damage = serializedObject.FindProperty("damage");
         mana = serializedObject.FindProperty("mana");
@@ -66,6 +74,14 @@ public class DeckBuilderManagerEditor : Editor
         EditorGUILayout.PropertyField(cardModelPrefab);
         EditorGUILayout.PropertyField(cardModelResourcePath);
         EditorGUILayout.HelpBox("Drag a prefab into Card Model Prefab (must be under a Resources folder). If empty, Card Model Resource Path is used.", MessageType.None);
+
+        EditorGUILayout.Space(8);
+        EditorGUILayout.LabelField("Card Audio", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(cardSummonSfxClip);
+        EditorGUILayout.PropertyField(cardSummonSfxPath);
+        EditorGUILayout.PropertyField(cardFireballSfxClip);
+        EditorGUILayout.PropertyField(cardFireballSfxPath);
+        EditorGUILayout.HelpBox("For no-rebuild deck edits, use audio file paths. In the Editor, dragged clips are copied into persistent deck audio when you add the card.", MessageType.None);
 
         var manager = (DeckBuilderManager)target;
         if (manager.CurrentCardNeedsCombatStats())
