@@ -79,13 +79,19 @@ Assets/Scenes/Card Detection Test.unity
 
 1. Print the cards you want to scan.
 2. Open `Card Detection Test`.
-3. Press Play.
-4. Point the phone camera at a printed card.
-5. When Vuforia detects the card, the assigned 3D model should appear.
-6. Scan the Fireball card to arm the visible model.
-7. Click the model in the Unity Game view to fire the fireball effect.
+3. Connect iVCam and make sure the phone camera feed is working.
+4. Press Play in Unity.
+5. Select the object that has the **Deck Runtime Image Target Loader** component.
+6. In the inspector, find **Runtime Deck Actions**.
+7. Press **Load** to load the deck as runtime Vuforia image targets.
+8. Point the phone camera at a printed card.
+9. When Vuforia detects the card, the assigned 3D model should appear.
+10. Scan the Fireball card to arm the visible model.
+11. Click the model in the Unity Game view to fire the fireball effect.
 
 The 3D model should stay visible after looking away from the card, so you can scan an ability card and then interact with the creature.
+
+If the deck was edited while the game is running, press **Reload** on the Deck Runtime Image Target Loader so Vuforia clears the old runtime targets and loads the updated deck.
 
 ## Creating Custom Cards
 
@@ -128,6 +134,54 @@ The deck builder lets you configure cards with:
 - Fireball sound effect.
 
 The runtime image target loader can load, reload, clear, and print runtime deck targets from the inspector.
+
+## Building A Deck
+
+The deck is created through the **Deck Builder Manager** in the Unity Inspector.
+
+1. Open `Assets/Scenes/Card Detection Test.unity`.
+2. Select the GameObject that has the **Deck Builder Manager** component.
+3. In the **Deck** section, enter the deck name and choose the game type.
+4. In the **Card** section, enter the card name and quantity.
+5. Choose the card type. For example, use `Creature` for a creature card or `Spell` for a spell/ability card.
+6. Assign the card image. This is the image that must be printed and scanned.
+7. If the card is a creature, fill in its health, damage, and mana values.
+8. In **Model And Target**, assign a model prefab or enter a Resources path for the model.
+9. In **Sounds**, assign optional summon and fireball sound effects.
+10. Press **Add Card** to add the card to the working deck.
+11. Repeat the process for every card you want in the deck.
+12. Press **Save Deck**.
+
+After saving, enter Play Mode and use the **Deck Runtime Image Target Loader** to load the deck into Vuforia.
+
+## Loading The Runtime Deck
+
+The **Deck Runtime Image Target Loader** is the component that turns the saved deck cards into runtime Vuforia image targets. The deck may exist in the deck builder, but Vuforia will not scan those cards until the runtime targets are loaded.
+
+1. Press Play.
+2. Select the GameObject with the **Deck Runtime Image Target Loader** component.
+3. Check that **Deck Id To Load** matches the deck you want to test.
+4. Press **Load** under **Runtime Deck Actions**.
+5. Check the Unity Console. It should say how many runtime targets were created, skipped, or failed.
+6. Start scanning the printed cards.
+
+Use these buttons while testing:
+
+- **Load**: loads the selected deck into Vuforia.
+- **Reload**: clears the current runtime targets and loads the deck again. Use this after editing and saving a deck.
+- **Clear Targets**: removes the runtime targets currently loaded from the deck.
+- **Print Loaded**: prints the loaded runtime target names to the Console.
+- **Clear Loaded Cache**: clears the loader's internal list of loaded target names.
+
+The **Load** and **Reload** buttons should be used in Play Mode because Vuforia needs to be initialized before runtime image targets can be created.
+
+## Creature Cards And Ability Cards
+
+Creature cards are cards that spawn 3D models. These should have a card image and a model assigned.
+
+The Fireball card works differently. It is an ability card. When the Fireball card is scanned, it arms the currently visible creature instead of spawning a new model. The creature should glow yellow. The next click on the creature fires the fireball animation and sound effect, then disables the ability until the Fireball card is scanned again.
+
+For the Fireball card, make sure the card name contains `Fireball`, or configure it as a spell/ability card with a fireball sound effect.
 
 ## Printing Cards
 
