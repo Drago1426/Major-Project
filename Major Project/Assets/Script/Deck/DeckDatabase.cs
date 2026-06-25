@@ -53,6 +53,12 @@ public class DeckCardEntry
     public float targetWidthMeters = 0.06f;
     [Tooltip("Resources path to load this card's summon prefab (without file extension).")]
     public string modelResourcePath;
+    [Tooltip("Absolute path to a runtime-imported model file. Runtime OBJ files are supported by the mobile deck builder.")]
+    public string customModelPath;
+    [Tooltip("Local scale applied to the spawned model.")]
+    public Vector3 modelScale = Vector3.one;
+    [Tooltip("Tint applied to the spawned model renderers.")]
+    public Color modelTint = Color.white;
 
     [Header("Audio")]
     [Tooltip("Absolute file path or Resources path for the sound played when this card summons.")]
@@ -78,6 +84,11 @@ public class DeckCardEntry
         return !string.IsNullOrWhiteSpace(modelResourcePath);
     }
 
+    public bool HasCustomModelPath()
+    {
+        return !string.IsNullOrWhiteSpace(customModelPath);
+    }
+
     public bool HasSummonSfxPath()
     {
         return !string.IsNullOrWhiteSpace(summonSfxPath);
@@ -86,6 +97,34 @@ public class DeckCardEntry
     public bool HasFireballSfxPath()
     {
         return !string.IsNullOrWhiteSpace(fireballSfxPath);
+    }
+
+    public Vector3 SafeModelScale()
+    {
+        bool hasScale = Mathf.Abs(modelScale.x) > Mathf.Epsilon ||
+            Mathf.Abs(modelScale.y) > Mathf.Epsilon ||
+            Mathf.Abs(modelScale.z) > Mathf.Epsilon;
+
+        if (!hasScale)
+            return Vector3.one;
+
+        return new Vector3(
+            Mathf.Max(0.01f, modelScale.x),
+            Mathf.Max(0.01f, modelScale.y),
+            Mathf.Max(0.01f, modelScale.z));
+    }
+
+    public Color SafeModelTint()
+    {
+        if (modelTint.a <= 0f &&
+            Mathf.Approximately(modelTint.r, 0f) &&
+            Mathf.Approximately(modelTint.g, 0f) &&
+            Mathf.Approximately(modelTint.b, 0f))
+        {
+            return Color.white;
+        }
+
+        return new Color(modelTint.r, modelTint.g, modelTint.b, Mathf.Max(0.01f, modelTint.a));
     }
 }
 

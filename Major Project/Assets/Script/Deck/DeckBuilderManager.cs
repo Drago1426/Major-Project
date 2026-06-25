@@ -27,6 +27,10 @@ public class DeckBuilderManager : MonoBehaviour
     [SerializeField] GameObject cardModelPrefab;
     [Tooltip("Optional Resources path for this card's summon prefab, e.g. Creatures/Dragon.")]
     [SerializeField] string cardModelResourcePath = "";
+    [Tooltip("Optional absolute path to a runtime-imported model file. Runtime OBJ files are supported.")]
+    [SerializeField] string cardCustomModelPath = "";
+    [SerializeField] Vector3 cardModelScale = Vector3.one;
+    [SerializeField] Color cardModelTint = Color.white;
 
     [Header("Card Audio")]
     [SerializeField] AudioClip cardSummonSfxClip;
@@ -83,6 +87,25 @@ public class DeckBuilderManager : MonoBehaviour
     public void SetCardModelResourcePath(string resourcePath)
     {
         cardModelResourcePath = resourcePath;
+    }
+
+    public void SetCardCustomModelPath(string modelPath)
+    {
+        cardCustomModelPath = modelPath;
+    }
+
+    public void SetCardModelScale(Vector3 modelScale)
+    {
+        cardModelScale = new Vector3(
+            Mathf.Max(0.01f, modelScale.x),
+            Mathf.Max(0.01f, modelScale.y),
+            Mathf.Max(0.01f, modelScale.z));
+    }
+
+    public void SetCardModelTint(Color modelTint)
+    {
+        modelTint.a = Mathf.Max(0.01f, modelTint.a);
+        cardModelTint = modelTint;
     }
 
     public void SetCardModelPrefab(GameObject modelPrefab)
@@ -176,6 +199,9 @@ public class DeckBuilderManager : MonoBehaviour
             mana = mana,
             targetWidthMeters = targetWidthMeters,
             modelResourcePath = resolvedModelResourcePath,
+            customModelPath = string.IsNullOrWhiteSpace(cardCustomModelPath) ? string.Empty : cardCustomModelPath.Trim(),
+            modelScale = SafeModelScale(cardModelScale),
+            modelTint = SafeModelTint(cardModelTint),
             summonSfxPath = resolvedSummonSfxPath,
             fireballSfxPath = resolvedFireballSfxPath
         };
@@ -367,6 +393,27 @@ public class DeckBuilderManager : MonoBehaviour
         }
 
         return string.IsNullOrWhiteSpace(explicitPath) ? string.Empty : explicitPath.Trim();
+    }
+
+    static Vector3 SafeModelScale(Vector3 modelScale)
+    {
+        return new Vector3(
+            Mathf.Max(0.01f, modelScale.x),
+            Mathf.Max(0.01f, modelScale.y),
+            Mathf.Max(0.01f, modelScale.z));
+    }
+
+    static Color SafeModelTint(Color modelTint)
+    {
+        if (modelTint.a <= 0f &&
+            Mathf.Approximately(modelTint.r, 0f) &&
+            Mathf.Approximately(modelTint.g, 0f) &&
+            Mathf.Approximately(modelTint.b, 0f))
+        {
+            return Color.white;
+        }
+
+        return new Color(modelTint.r, modelTint.g, modelTint.b, Mathf.Max(0.01f, modelTint.a));
     }
 
 #if UNITY_EDITOR

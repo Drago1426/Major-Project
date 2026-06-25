@@ -51,6 +51,8 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     readonly List<GameObject> createdRuntimeTargetObjects = new();
     Coroutine reloadRoutine;
 
+    public DeckDatabase DeckDatabase => deckDatabase;
+
     void Start()
     {
         Debug.Log($"[DeckRuntimeImageTargetLoader] Start on '{gameObject.name}'. autoLoadOnStart={autoLoadOnStart}");
@@ -292,19 +294,17 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
 
             if (summonComponent.creature == null)
             {
-                GameObject modelPrefab = ResolveModelPrefabForCard(card);
+                GameObject spawnedCreature = CreateRuntimeCreatureForCard(card, runtimeObject.transform);
 
-                if (modelPrefab == null)
+                if (spawnedCreature == null)
                 {
-                    Debug.LogWarning($"Summon is enabled for '{createdObserver.TargetName}' but no per-card modelResourcePath or default runtime prefab was found.");
+                    Debug.LogWarning($"Summon is enabled for '{createdObserver.TargetName}' but no per-card modelResourcePath, customModelPath, or default runtime prefab was found.");
                 }
                 else
                 {
-                    var spawnedCreature = Instantiate(modelPrefab, runtimeObject.transform);
-                    spawnedCreature.name = $"{modelPrefab.name}_runtime";
                     spawnedCreature.transform.localPosition = summonComponent.startLocalPos;
                     spawnedCreature.transform.localRotation = Quaternion.identity;
-                    spawnedCreature.transform.localScale = Vector3.one;
+                    ApplyRuntimeModelCustomization(spawnedCreature, card);
                     EnsureRuntimeCreatureInteraction(spawnedCreature, card);
                     spawnedCreature.SetActive(false);
                     summonComponent.creature = spawnedCreature;
@@ -362,6 +362,9 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
     {
         if (card == null || isFireballAbilityCard)
             return false;
+
+        if (card.HasCustomModelPath())
+            return true;
 
         if (card.NeedsCombatStats(gameType) || card.HasModelResourcePath())
             return true;
@@ -503,6 +506,58 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             Mathf.Max(0.02f, Mathf.Abs(localSize.z) * 1.15f));
     }
 
+    GameObject CreateRuntimeCreatureForCard(DeckCardEntry card, Transform parent)
+    {
+        if (card != null && card.HasCustomModelPath())
+        {
+            GameObject runtimeModel = RuntimeObjModelLoader.Load(card.customModelPath, card.SafeModelTint());
+            if (runtimeModel != null)
+            {
+                runtimeModel.name = $"{SanitizeObjectName(card.cardName)}_custom_runtime";
+                runtimeModel.transform.SetParent(parent, false);
+                return runtimeModel;
+            }
+        }
+
+        GameObject modelPrefab = ResolveModelPrefabForCard(card);
+        if (modelPrefab == null)
+            return null;
+
+        var spawnedCreature = Instantiate(modelPrefab, parent);
+        spawnedCreature.name = $"{modelPrefab.name}_runtime";
+        return spawnedCreature;
+    }
+
+    void ApplyRuntimeModelCustomization(GameObject creature, DeckCardEntry card)
+    {
+        if (creature == null || card == null)
+            return;
+
+        creature.transform.localScale = card.SafeModelScale();
+        ApplyModelTint(creature, card.SafeModelTint());
+    }
+
+    void ApplyModelTint(GameObject creature, Color tint)
+    {
+        if (creature == null)
+            return;
+
+        var renderers = creature.GetComponentsInChildren<Renderer>(true);
+        var propertyBlock = new MaterialPropertyBlock();
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null || renderer is ParticleSystemRenderer)
+                continue;
+
+            renderer.GetPropertyBlock(propertyBlock);
+            propertyBlock.SetColor("_BaseColor", tint);
+            propertyBlock.SetColor("_Color", tint);
+            renderer.SetPropertyBlock(propertyBlock);
+        }
+    }
+
     GameObject ResolveModelPrefabForCard(DeckCardEntry card)
     {
         if (card != null && card.HasModelResourcePath())
@@ -523,6 +578,19 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return conventionPrefab;
 
         return defaultRuntimeCreaturePrefab;
+    }
+
+    string SanitizeObjectName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "runtime_model";
+
+        string safe = value.Trim().Replace(" ", "_");
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+        for (int i = 0; i < invalidChars.Length; i++)
+            safe = safe.Replace(invalidChars[i].ToString(), string.Empty);
+
+        return string.IsNullOrWhiteSpace(safe) ? "runtime_model" : safe;
     }
 
     GameObject ResolveModelOverrideForCard(DeckCardEntry card)

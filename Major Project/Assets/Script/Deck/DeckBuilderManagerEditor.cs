@@ -18,6 +18,9 @@ public class DeckBuilderManagerEditor : Editor
     SerializedProperty targetWidthMeters;
     SerializedProperty cardModelPrefab;
     SerializedProperty cardModelResourcePath;
+    SerializedProperty cardCustomModelPath;
+    SerializedProperty cardModelScale;
+    SerializedProperty cardModelTint;
     SerializedProperty cardSummonSfxClip;
     SerializedProperty cardSummonSfxPath;
     SerializedProperty cardFireballSfxClip;
@@ -47,6 +50,9 @@ public class DeckBuilderManagerEditor : Editor
         targetWidthMeters = serializedObject.FindProperty("targetWidthMeters");
         cardModelPrefab = serializedObject.FindProperty("cardModelPrefab");
         cardModelResourcePath = serializedObject.FindProperty("cardModelResourcePath");
+        cardCustomModelPath = serializedObject.FindProperty("cardCustomModelPath");
+        cardModelScale = serializedObject.FindProperty("cardModelScale");
+        cardModelTint = serializedObject.FindProperty("cardModelTint");
         cardSummonSfxClip = serializedObject.FindProperty("cardSummonSfxClip");
         cardSummonSfxPath = serializedObject.FindProperty("cardSummonSfxPath");
         cardFireballSfxClip = serializedObject.FindProperty("cardFireballSfxClip");
@@ -115,6 +121,9 @@ public class DeckBuilderManagerEditor : Editor
             EditorGUILayout.PropertyField(targetWidthMeters);
             EditorGUILayout.PropertyField(cardModelPrefab);
             EditorGUILayout.PropertyField(cardModelResourcePath);
+            EditorGUILayout.PropertyField(cardCustomModelPath);
+            EditorGUILayout.PropertyField(cardModelScale);
+            EditorGUILayout.PropertyField(cardModelTint);
             EditorGUI.indentLevel--;
         }
 

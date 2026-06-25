@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine;
 
@@ -6,12 +8,15 @@ public class TapToInteract : MonoBehaviour
     [Header("Input")]
     public bool allowTouchInput = true;
     public bool allowMouseInput = true;
+    public bool ignoreWhenPointerOverUi = true;
 
     [Header("Raycast")]
     public Camera arCamera;
     public LayerMask interactLayer = ~0; // everything by default
     public float maxRayDistance = 1000f;
     public bool logHits = true;
+
+    readonly List<RaycastResult> _uiRaycastResults = new();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void AutoInstallOnMainCamera()
@@ -71,6 +76,9 @@ public class TapToInteract : MonoBehaviour
 
     void TryHit(Vector2 screenPos)
     {
+        if (IsPointerOverUi(screenPos))
+            return;
+
         Ray ray = arCamera.ScreenPointToRay(screenPos);
 
         if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, interactLayer, QueryTriggerInteraction.Collide))
@@ -87,5 +95,20 @@ public class TapToInteract : MonoBehaviour
                 interactable.OnTapped(hit.point);
             }
         }
+    }
+
+    bool IsPointerOverUi(Vector2 screenPos)
+    {
+        if (!ignoreWhenPointerOverUi || EventSystem.current == null)
+            return false;
+
+        var pointerData = new PointerEventData(EventSystem.current)
+        {
+            position = screenPos
+        };
+
+        _uiRaycastResults.Clear();
+        EventSystem.current.RaycastAll(pointerData, _uiRaycastResults);
+        return _uiRaycastResults.Count > 0;
     }
 }
