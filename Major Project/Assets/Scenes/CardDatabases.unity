@@ -302,11 +302,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DeckBuilderManager
   deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
   deckName: Test 2
-  selectedGameType: 0
+  editingDeckId: 
+  selectedSavedDeckId: 
   cardName: Melusine 1
   quantity: 2
-  mtgCardType: 0
-  pokemonCardType: 0
+  cardType: 1
   cardImage: {fileID: 2800000, guid: 937afd2be439439585b3ad3a4f10bbe1, type: 3}
   targetWidthMeters: 0.06
   health: 10

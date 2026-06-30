@@ -13,9 +13,8 @@ MonoBehaviour:
   m_Name: DeckDatabase
   m_EditorClassIdentifier: Assembly-CSharp::DeckDatabase
   savedDecks:
-  - deckId: mtg-test-deck
+  - deckId: test-deck
     deckName: Test Deck
-    gameType: 0
     cards:
     - cardName: melusine
       quantity: 1

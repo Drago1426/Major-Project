@@ -90,7 +90,7 @@ public class MobileDeckBuilderScreen : MonoBehaviour
     void BuildCardSection(Transform parent)
     {
         AddSection(parent, "Card Details");
-        AddDropdown(parent, "Card Type", EnumNames<MobileDeckCardType>(), index =>
+        AddDropdown(parent, "Card Type", EnumNames<DeckCardType>(), index =>
         {
             controller.SetCardType(index);
             UpdateCreatureStatsVisibility();

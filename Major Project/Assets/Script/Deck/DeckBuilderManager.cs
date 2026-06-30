@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -15,13 +16,15 @@ public class DeckBuilderManager : MonoBehaviour
 
     [Header("Current Deck")]
     [SerializeField] string deckName = "My Deck";
-    [SerializeField] CardGameType selectedGameType = CardGameType.MTG;
+    [Tooltip("Filled when an existing saved deck is loaded for editing. Empty means the next save creates/updates by deck name.")]
+    [SerializeField] string editingDeckId = "";
+    [Tooltip("Deck selected in the custom inspector for loading into the editor.")]
+    [SerializeField] string selectedSavedDeckId = "";
 
     [Header("Card Input")]
     [SerializeField] string cardName = "";
     [SerializeField] int quantity = 1;
-    [SerializeField] MtgCardType mtgCardType = MtgCardType.Creature;
-    [SerializeField] PokemonCardType pokemonCardType = PokemonCardType.Pokemon;
+    [SerializeField] DeckCardType cardType = DeckCardType.Creature;
     [SerializeField] Texture2D cardImage;
     [SerializeField] float targetWidthMeters = 0.06f;
     [SerializeField] GameObject cardModelPrefab;
@@ -47,7 +50,7 @@ public class DeckBuilderManager : MonoBehaviour
     [SerializeField] int cardEffectDurationTurns = 0;
     [SerializeField] int cardEffectManaCost = 0;
 
-    [Header("Only used for Creature / Pokemon cards")]
+    [Header("Only used for Creature cards")]
     [SerializeField] int health = 0;
     [SerializeField] int damage = 0;
     [SerializeField] int mana = 0;
@@ -55,20 +58,59 @@ public class DeckBuilderManager : MonoBehaviour
     [Header("Working deck before save")]
     [SerializeField] List<DeckCardEntry> workingCards = new();
 
+    public IReadOnlyList<DeckData> SavedDecks => deckDatabase != null ? deckDatabase.SavedDecks : Array.Empty<DeckData>();
+    public string SelectedSavedDeckId => selectedSavedDeckId;
+    public string CurrentDeckId => string.IsNullOrWhiteSpace(editingDeckId) ? BuildDeckId(deckName) : editingDeckId.Trim();
+
     void Awake()
     {
+        ResolveSceneReferences();
+
         if (deckDatabase != null)
             deckDatabase.LoadDecks();
     }
 
-    public void SetGameType(int gameTypeIndex)
+    void Reset()
     {
-        selectedGameType = (CardGameType)Mathf.Clamp(gameTypeIndex, 0, Enum.GetValues(typeof(CardGameType)).Length - 1);
+        ResolveSceneReferences();
+    }
+
+    void OnValidate()
+    {
+        ResolveSceneReferences();
+    }
+
+    public bool ResolveSceneReferences()
+    {
+        bool changed = false;
+
+        if (runtimeTargetLoader == null)
+        {
+            DeckRuntimeImageTargetLoader foundLoader = FindFirstObjectByType<DeckRuntimeImageTargetLoader>(FindObjectsInactive.Include);
+            if (foundLoader != null)
+            {
+                runtimeTargetLoader = foundLoader;
+                changed = true;
+            }
+        }
+
+        if (deckDatabase == null && runtimeTargetLoader != null && runtimeTargetLoader.DeckDatabase != null)
+        {
+            deckDatabase = runtimeTargetLoader.DeckDatabase;
+            changed = true;
+        }
+
+        return changed;
     }
 
     public void SetDeckName(string newDeckName)
     {
         deckName = newDeckName;
+    }
+
+    public void SetSelectedSavedDeckId(string deckId)
+    {
+        selectedSavedDeckId = string.IsNullOrWhiteSpace(deckId) ? string.Empty : deckId.Trim();
     }
 
     public void SetCardName(string newCardName)
@@ -149,14 +191,9 @@ public class DeckBuilderManager : MonoBehaviour
         cardEffectManaCost = Mathf.Max(0, manaCost);
     }
 
-    public void SetMtgCardType(int cardTypeIndex)
+    public void SetCardType(int cardTypeIndex)
     {
-        mtgCardType = (MtgCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(MtgCardType)).Length - 1);
-    }
-
-    public void SetPokemonCardType(int cardTypeIndex)
-    {
-        pokemonCardType = (PokemonCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(PokemonCardType)).Length - 1);
+        cardType = (DeckCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(DeckCardType)).Length - 1);
     }
 
     public void SetCombatStats(int newHealth, int newDamage, int newMana)
@@ -168,18 +205,12 @@ public class DeckBuilderManager : MonoBehaviour
 
     public bool CurrentCardNeedsCombatStats()
     {
-        if (selectedGameType == CardGameType.MTG)
-            return mtgCardType == MtgCardType.Creature;
-
-        return pokemonCardType == PokemonCardType.Pokemon;
+        return cardType == DeckCardType.Creature;
     }
 
     public string CurrentSelectedCardType()
     {
-        if (selectedGameType == CardGameType.MTG)
-            return mtgCardType.ToString();
-
-        return pokemonCardType.ToString();
+        return cardType.ToString();
     }
 
     [ContextMenu("Add Card To Working Deck")]
@@ -204,7 +235,9 @@ public class DeckBuilderManager : MonoBehaviour
 
         string resolvedModelResourcePath = ResolveModelResourcePathForCurrentCard();
         string resolvedSummonSfxPath = ResolveAudioPathForCurrentCard(cardSummonSfxClip, cardSummonSfxPath, cardName, "summon");
-        string resolvedEffectSfxPath = ResolveAudioPathForCurrentCard(cardEffectSfxClip, cardEffectSfxPath, cardName, "effect");
+        string resolvedEffectSfxPath = cardType == DeckCardType.Spell
+            ? ResolveAudioPathForCurrentCard(cardEffectSfxClip, cardEffectSfxPath, cardName, "effect")
+            : string.Empty;
         var card = new DeckCardEntry
         {
             cardName = cardName.Trim(),
@@ -227,13 +260,28 @@ public class DeckBuilderManager : MonoBehaviour
             effectSfxPath = resolvedEffectSfxPath
         };
 
-        if (card.NeedsCombatStats(selectedGameType) && (health <= 0 || damage <= 0 || mana < 0))
+        if (card.NeedsCombatStats() && (health <= 0 || damage <= 0 || mana < 0))
         {
-            Debug.LogWarning("Creature / Pokemon cards need valid health and damage values. Mana must be 0 or higher.");
+            Debug.LogWarning("Creature cards need valid health and damage values. Mana must be 0 or higher.");
             return false;
         }
 
-        if (!card.NeedsCombatStats(selectedGameType))
+        if (cardType == DeckCardType.Spell)
+        {
+            if (cardEffectType == CardEffectType.None)
+            {
+                Debug.LogWarning("Spell cards need an effect type.");
+                return false;
+            }
+
+            if (cardEffectTarget == CardEffectTarget.None)
+            {
+                Debug.LogWarning("Spell cards need an effect target.");
+                return false;
+            }
+        }
+
+        if (!card.NeedsCombatStats())
         {
             card.health = 0;
             card.damage = 0;
@@ -284,13 +332,14 @@ public class DeckBuilderManager : MonoBehaviour
 
         var deck = new DeckData
         {
-            deckId = BuildDeckId(deckName, selectedGameType),
+            deckId = CurrentDeckId,
             deckName = deckName.Trim(),
-            gameType = selectedGameType,
-            cards = new List<DeckCardEntry>(workingCards)
+            cards = CloneCards(workingCards)
         };
 
         deckDatabase.AddOrUpdateDeck(deck);
+        editingDeckId = deck.deckId;
+        selectedSavedDeckId = deck.deckId;
         Debug.Log($"Saved deck '{deck.deckName}' with {deck.cards.Count} card entries.");
 
         if (runtimeTargetLoader != null)
@@ -312,9 +361,130 @@ public class DeckBuilderManager : MonoBehaviour
         return deckDatabase.GetDeck(deckId);
     }
 
-    string BuildDeckId(string name, CardGameType gameType)
+    [ContextMenu("Load Selected Deck For Editing")]
+    public void LoadSelectedDeckForEditing()
     {
-        return $"{gameType}-{name}".ToLowerInvariant().Replace(" ", "-");
+        LoadDeckIntoEditor(selectedSavedDeckId);
+    }
+
+    public bool LoadDeckIntoEditor(string deckId)
+    {
+        if (deckDatabase == null)
+        {
+            Debug.LogWarning("DeckDatabase reference is missing.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(deckId))
+        {
+            Debug.LogWarning("Select a saved deck before loading it for editing.");
+            return false;
+        }
+
+        deckDatabase.LoadDecks();
+        DeckData deck = deckDatabase.GetDeck(deckId);
+        if (deck == null)
+        {
+            Debug.LogWarning($"Deck '{deckId}' was not found.");
+            return false;
+        }
+
+        deckName = string.IsNullOrWhiteSpace(deck.deckName) ? "Untitled Deck" : deck.deckName;
+        editingDeckId = deck.deckId;
+        selectedSavedDeckId = deck.deckId;
+        workingCards = CloneCards(deck.cards);
+
+        if (runtimeTargetLoader != null)
+            runtimeTargetLoader.SetDeckIdToLoad(deck.deckId);
+
+        Debug.Log($"Loaded deck '{deck.deckName}' for editing.");
+        return true;
+    }
+
+    [ContextMenu("Start New Deck")]
+    public void StartNewDeck()
+    {
+        editingDeckId = string.Empty;
+        selectedSavedDeckId = string.Empty;
+        deckName = "My Deck";
+        workingCards.Clear();
+        Debug.Log("Started a new working deck.");
+    }
+
+    public void RefreshSavedDecks()
+    {
+        if (deckDatabase == null)
+        {
+            Debug.LogWarning("DeckDatabase reference is missing.");
+            return;
+        }
+
+        deckDatabase.LoadDecks();
+        Debug.Log($"Loaded {deckDatabase.SavedDecks.Count} saved deck(s).");
+    }
+
+    static string BuildDeckId(string name)
+    {
+        string safeName = string.IsNullOrWhiteSpace(name) ? "deck" : name.Trim().ToLowerInvariant();
+        var builder = new StringBuilder();
+
+        for (int i = 0; i < safeName.Length; i++)
+        {
+            char c = safeName[i];
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(c);
+            }
+            else if (char.IsWhiteSpace(c) || c == '-' || c == '_')
+            {
+                builder.Append('-');
+            }
+        }
+
+        string id = builder.ToString().Trim('-');
+        while (id.Contains("--"))
+            id = id.Replace("--", "-");
+
+        return string.IsNullOrWhiteSpace(id) ? "deck" : id;
+    }
+
+    static List<DeckCardEntry> CloneCards(List<DeckCardEntry> sourceCards)
+    {
+        var clone = new List<DeckCardEntry>();
+        if (sourceCards == null)
+            return clone;
+
+        for (int i = 0; i < sourceCards.Count; i++)
+        {
+            DeckCardEntry source = sourceCards[i];
+            if (source == null)
+                continue;
+
+            clone.Add(new DeckCardEntry
+            {
+                cardName = source.cardName,
+                quantity = source.quantity,
+                cardType = source.cardType,
+                health = source.health,
+                damage = source.damage,
+                mana = source.mana,
+                imagePath = source.imagePath,
+                targetWidthMeters = source.targetWidthMeters,
+                modelResourcePath = source.modelResourcePath,
+                customModelPath = source.customModelPath,
+                modelScale = source.SafeModelScale(),
+                modelTint = source.SafeModelTint(),
+                summonSfxPath = source.summonSfxPath,
+                effectType = source.effectType,
+                effectTarget = source.effectTarget,
+                effectAmount = source.effectAmount,
+                effectDurationTurns = source.effectDurationTurns,
+                effectManaCost = source.effectManaCost,
+                effectSfxPath = source.effectSfxPath
+            });
+        }
+
+        return clone;
     }
 
     string SaveCardImage(string rawCardName, Texture2D image)

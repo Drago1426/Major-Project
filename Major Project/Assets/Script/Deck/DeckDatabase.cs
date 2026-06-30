@@ -3,33 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-public enum CardGameType
+public enum DeckCardType
 {
-    MTG,
-    PokemonTCG
-}
-
-public enum MtgCardType
-{
+    Summoner,
     Creature,
     Spell,
-    Land,
-    Artifact,
-    Enchantment,
-    Planeswalker,
-    Commander,
-    Elemental
-}
-
-public enum PokemonCardType
-{
-    Pokemon,
-    Trainer,
-    Energy,
-    Item,
-    Supporter,
-    Stadium,
-    Tool
+    Land
 }
 
 public enum CardEffectType
@@ -60,10 +39,10 @@ public class DeckCardEntry
     public string cardName;
     public int quantity = 1;
 
-    [Header("Card Type (stored as text for selected game)")]
+    [Header("Card Type")]
     public string cardType;
 
-    [Header("Only required for creatures / pokemon")]
+    [Header("Only required for creatures")]
     public int health;
     public int damage;
     public int mana;
@@ -98,22 +77,9 @@ public class DeckCardEntry
     [Tooltip("Absolute file path or Resources path for the sound played when this card effect is used.")]
     public string effectSfxPath;
 
-    public bool NeedsCombatStats(CardGameType gameType)
+    public bool NeedsCombatStats()
     {
-        if (string.Equals(cardType, "Creature", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        if (string.Equals(cardType, "Summoner", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(cardType, "Spell", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(cardType, "Land", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (gameType == CardGameType.MTG)
-            return string.Equals(cardType, MtgCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase);
-
-        return string.Equals(cardType, PokemonCardType.Pokemon.ToString(), StringComparison.OrdinalIgnoreCase);
+        return string.Equals(cardType, DeckCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     public bool HasImageTarget()
@@ -175,7 +141,6 @@ public class DeckData
 {
     public string deckId;
     public string deckName;
-    public CardGameType gameType;
     public List<DeckCardEntry> cards = new();
 }
 

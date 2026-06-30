@@ -122,7 +122,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
                 continue;
             }
 
-            if (TryCreateVuforiaImageTarget(card, runtimeTargetName, deck.gameType))
+            if (TryCreateVuforiaImageTarget(card, runtimeTargetName))
             {
                 createdCount++;
                 loadedTargetNames.Add(runtimeTargetName);
@@ -144,7 +144,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         return $"{runtimeTargetNamePrefix}{trimmedCardName}";
     }
 
-    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName, CardGameType gameType)
+    bool TryCreateVuforiaImageTarget(DeckCardEntry card, string runtimeTargetName)
     {
         if (card == null)
             return false;
@@ -182,7 +182,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
             return false;
         }
 
-        TryAttachRuntimeComponents(createdObserver, card, gameType);
+        TryAttachRuntimeComponents(createdObserver, card);
         createdRuntimeTargetObjects.Add(createdObserver.gameObject);
 
         Debug.Log(
@@ -263,7 +263,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         Debug.Log("Loaded runtime targets: " + string.Join(", ", loadedTargetNames));
     }
 
-    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card, CardGameType gameType)
+    void TryAttachRuntimeComponents(ObserverBehaviour createdObserver, DeckCardEntry card)
     {
         if (createdObserver == null)
             return;
@@ -271,7 +271,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         var runtimeObject = createdObserver.gameObject;
         SummonOnTargetFound summonComponent = null;
 
-        if (addSummonOnTargetFoundToRuntimeTargets && ShouldCreateSummonForCard(card, gameType))
+        if (addSummonOnTargetFoundToRuntimeTargets && ShouldCreateSummonForCard(card))
         {
             summonComponent = runtimeObject.GetComponent<SummonOnTargetFound>();
 
@@ -333,7 +333,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         }
     }
 
-    bool ShouldCreateSummonForCard(DeckCardEntry card, CardGameType gameType)
+    bool ShouldCreateSummonForCard(DeckCardEntry card)
     {
         if (card == null)
             return false;
@@ -341,7 +341,7 @@ public class DeckRuntimeImageTargetLoader : MonoBehaviour
         if (card.HasCustomModelPath())
             return true;
 
-        if (card.NeedsCombatStats(gameType) || card.HasModelResourcePath())
+        if (card.NeedsCombatStats() || card.HasModelResourcePath())
             return true;
 
         if (ResolveModelOverrideForCard(card) != null)

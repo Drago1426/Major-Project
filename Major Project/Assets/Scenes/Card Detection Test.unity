@@ -280,15 +280,18 @@ MonoBehaviour:
   runtimeTargetLoader: {fileID: 894206190}
   reloadRuntimeTargetsAfterSave: 1
   deckName: Test Deck
-  selectedGameType: 0
+  editingDeckId: mtg-test-deck
+  selectedSavedDeckId: test-deck-2
   cardName: Spell Example
   quantity: 1
-  mtgCardType: 1
-  pokemonCardType: 0
+  cardType: 2
   cardImage: {fileID: 2800000, guid: 794368d7006942ce86482b9f4d27fcdf, type: 3}
   targetWidthMeters: 0.06
   cardModelPrefab: {fileID: 8072475123730651775, guid: 6467632680b09bb4d9810407c70febf1, type: 3}
   cardModelResourcePath: 
+  cardCustomModelPath: 
+  cardModelScale: {x: 1, y: 1, z: 1}
+  cardModelTint: {r: 1, g: 1, b: 1, a: 1}
   cardSummonSfxClip: {fileID: 0}
   cardSummonSfxPath: 
   cardEffectSfxClip: {fileID: 0}
@@ -311,6 +314,9 @@ MonoBehaviour:
     imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Cinder_2c18d60bf76d42ca8e8086691cc19991.png
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireTroll_Prefab
+    customModelPath: 
+    modelScale: {x: 1, y: 1, z: 1}
+    modelTint: {r: 1, g: 1, b: 1, a: 1}
     summonSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Cinder_summon_3da91cf9b8dc4fa6ae576f4b3c19579a.mp3
     effectType: 0
     effectTarget: 0
@@ -327,6 +333,9 @@ MonoBehaviour:
     imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Sunfyre_07a4cacc8a4145f7948d77e1af63962f.png
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireDragon_Prefab
+    customModelPath: 
+    modelScale: {x: 1, y: 1, z: 1}
+    modelTint: {r: 1, g: 1, b: 1, a: 1}
     summonSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Sunfyre_summon_a777340a52984b0ea7fce6398543c7eb.mp3
     effectType: 0
     effectTarget: 0
@@ -343,6 +352,9 @@ MonoBehaviour:
     imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Seraphina_64062d2c971f4fd5bfe3d580a6443833.png
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireMermaid_Prefab
+    customModelPath: 
+    modelScale: {x: 1, y: 1, z: 1}
+    modelTint: {r: 1, g: 1, b: 1, a: 1}
     summonSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Seraphina_summon_9a0e38c429914159a2aefaa359f4daa5.mp3
     effectType: 0
     effectTarget: 0

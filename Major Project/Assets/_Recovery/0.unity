@@ -280,11 +280,11 @@ MonoBehaviour:
   runtimeTargetLoader: {fileID: 894206190}
   reloadRuntimeTargetsAfterSave: 1
   deckName: Test Deck
-  selectedGameType: 0
+  editingDeckId: test-deck
+  selectedSavedDeckId: test-deck
   cardName: Spell Example
   quantity: 1
-  mtgCardType: 1
-  pokemonCardType: 0
+  cardType: 2
   cardImage: {fileID: 2800000, guid: 794368d7006942ce86482b9f4d27fcdf, type: 3}
   targetWidthMeters: 0.06
   cardModelPrefab: {fileID: 8072475123730651775, guid: 6467632680b09bb4d9810407c70febf1, type: 3}
@@ -375,7 +375,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DeckRuntimeImageTargetLoader
   deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
-  deckIdToLoad: mtg-test-deck
+  deckIdToLoad: test-deck
   autoLoadOnStart: 1
   reloadDatabaseBeforeLoading: 1
   runtimeTargetNamePrefix: runtime_deck_

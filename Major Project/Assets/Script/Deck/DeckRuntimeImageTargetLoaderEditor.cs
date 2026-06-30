@@ -55,14 +55,18 @@ public class DeckRuntimeImageTargetLoaderEditor : Editor
         manaIcon = serializedObject.FindProperty("manaIcon");
         damageIcon = serializedObject.FindProperty("damageIcon");
         addStatsDisplayToRuntimeModels = serializedObject.FindProperty("addStatsDisplayToRuntimeModels");
+
+        var loader = (DeckRuntimeImageTargetLoader)target;
+        if (loader.DeckDatabase != null)
+            loader.DeckDatabase.LoadDecks();
     }
 
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
 
-        DrawActions();
         DrawBasicSetup();
+        DrawActions();
         DrawOptionalSections();
         DrawAdvanced();
 
@@ -100,10 +104,66 @@ public class DeckRuntimeImageTargetLoaderEditor : Editor
     {
         EditorGUILayout.LabelField("Deck Source", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(deckDatabase);
+        DrawSavedDeckSelector();
         EditorGUILayout.PropertyField(deckIdToLoad);
         EditorGUILayout.PropertyField(autoLoadOnStart);
         EditorGUILayout.PropertyField(defaultRuntimeCreaturePrefab);
         EditorGUILayout.Space(8);
+    }
+
+    void DrawSavedDeckSelector()
+    {
+        var database = deckDatabase.objectReferenceValue as DeckDatabase;
+        if (database == null)
+        {
+            EditorGUILayout.HelpBox("Assign a DeckDatabase to select saved decks.", MessageType.Info);
+            return;
+        }
+
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Refresh Saved Decks", GUILayout.Height(24)))
+        {
+            database.LoadDecks();
+            EditorUtility.SetDirty(database);
+        }
+        EditorGUILayout.EndHorizontal();
+
+        var decks = database.SavedDecks;
+        if (decks.Count == 0)
+        {
+            EditorGUILayout.HelpBox("No saved decks found. Save a deck first, then refresh this list.", MessageType.Info);
+            return;
+        }
+
+        string currentDeckId = deckIdToLoad.stringValue;
+        string[] options = new string[decks.Count + 1];
+        options[0] = "Select a deck...";
+        int selectedIndex = 0;
+
+        for (int i = 0; i < decks.Count; i++)
+        {
+            DeckData deck = decks[i];
+            string deckId = deck?.deckId ?? string.Empty;
+            string deckName = string.IsNullOrWhiteSpace(deck?.deckName) ? deckId : deck.deckName;
+            options[i + 1] = $"{deckName} ({deckId})";
+
+            if (!string.IsNullOrWhiteSpace(currentDeckId) &&
+                string.Equals(currentDeckId, deckId, System.StringComparison.OrdinalIgnoreCase))
+            {
+                selectedIndex = i + 1;
+            }
+        }
+
+        EditorGUI.BeginChangeCheck();
+        int nextIndex = EditorGUILayout.Popup("Saved Deck", selectedIndex, options);
+        if (EditorGUI.EndChangeCheck())
+        {
+            deckIdToLoad.stringValue = nextIndex > 0 && nextIndex <= decks.Count
+                ? decks[nextIndex - 1].deckId
+                : string.Empty;
+            serializedObject.ApplyModifiedProperties();
+            EditorUtility.SetDirty(target);
+        }
     }
 
     void DrawOptionalSections()

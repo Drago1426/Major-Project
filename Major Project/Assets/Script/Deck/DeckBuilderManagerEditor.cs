@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,11 +10,11 @@ public class DeckBuilderManagerEditor : Editor
     SerializedProperty runtimeTargetLoader;
     SerializedProperty reloadRuntimeTargetsAfterSave;
     SerializedProperty deckName;
-    SerializedProperty selectedGameType;
+    SerializedProperty editingDeckId;
+    SerializedProperty selectedSavedDeckId;
     SerializedProperty cardName;
     SerializedProperty quantity;
-    SerializedProperty mtgCardType;
-    SerializedProperty pokemonCardType;
+    SerializedProperty cardType;
     SerializedProperty cardImage;
     SerializedProperty targetWidthMeters;
     SerializedProperty cardModelPrefab;
@@ -46,11 +47,11 @@ public class DeckBuilderManagerEditor : Editor
         runtimeTargetLoader = serializedObject.FindProperty("runtimeTargetLoader");
         reloadRuntimeTargetsAfterSave = serializedObject.FindProperty("reloadRuntimeTargetsAfterSave");
         deckName = serializedObject.FindProperty("deckName");
-        selectedGameType = serializedObject.FindProperty("selectedGameType");
+        editingDeckId = serializedObject.FindProperty("editingDeckId");
+        selectedSavedDeckId = serializedObject.FindProperty("selectedSavedDeckId");
         cardName = serializedObject.FindProperty("cardName");
         quantity = serializedObject.FindProperty("quantity");
-        mtgCardType = serializedObject.FindProperty("mtgCardType");
-        pokemonCardType = serializedObject.FindProperty("pokemonCardType");
+        cardType = serializedObject.FindProperty("cardType");
         cardImage = serializedObject.FindProperty("cardImage");
         targetWidthMeters = serializedObject.FindProperty("targetWidthMeters");
         cardModelPrefab = serializedObject.FindProperty("cardModelPrefab");
@@ -71,6 +72,13 @@ public class DeckBuilderManagerEditor : Editor
         damage = serializedObject.FindProperty("damage");
         mana = serializedObject.FindProperty("mana");
         workingCards = serializedObject.FindProperty("workingCards");
+
+        var manager = (DeckBuilderManager)target;
+        if (manager.ResolveSceneReferences())
+        {
+            EditorUtility.SetDirty(manager);
+            serializedObject.Update();
+        }
     }
 
     public override void OnInspectorGUI()
@@ -90,7 +98,12 @@ public class DeckBuilderManagerEditor : Editor
         EditorGUILayout.LabelField("Deck", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(deckDatabase);
         EditorGUILayout.PropertyField(deckName);
-        EditorGUILayout.PropertyField(selectedGameType);
+
+        EditorGUI.BeginDisabledGroup(true);
+        EditorGUILayout.PropertyField(editingDeckId, new GUIContent("Editing Deck Id"));
+        EditorGUI.EndDisabledGroup();
+
+        DrawSavedDeckPicker();
 
         showRuntimeReload = EditorGUILayout.Foldout(showRuntimeReload, "Runtime Reload", true);
         if (showRuntimeReload)
@@ -104,14 +117,87 @@ public class DeckBuilderManagerEditor : Editor
         EditorGUILayout.Space(8);
     }
 
+    void DrawSavedDeckPicker()
+    {
+        var manager = (DeckBuilderManager)target;
+        var database = deckDatabase.objectReferenceValue as DeckDatabase;
+
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Edit Saved Deck", EditorStyles.miniBoldLabel);
+
+        if (database == null)
+        {
+            EditorGUILayout.HelpBox("Assign a DeckDatabase to load and edit saved decks.", MessageType.Info);
+            return;
+        }
+
+        var decks = database.SavedDecks;
+        if (decks.Count == 0)
+        {
+            EditorGUILayout.HelpBox("No saved decks are loaded. Press Refresh Saved Decks if you created one during Play Mode.", MessageType.Info);
+        }
+        else
+        {
+            string[] options = new string[decks.Count];
+            int selectedIndex = 0;
+            string currentDeckId = selectedSavedDeckId.stringValue;
+
+            for (int i = 0; i < decks.Count; i++)
+            {
+                DeckData deck = decks[i];
+                string id = deck?.deckId ?? string.Empty;
+                string name = string.IsNullOrWhiteSpace(deck?.deckName) ? id : deck.deckName;
+                options[i] = $"{name} ({id})";
+
+                if (!string.IsNullOrWhiteSpace(currentDeckId) &&
+                    string.Equals(currentDeckId, id, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedIndex = i;
+                }
+            }
+
+            int nextIndex = EditorGUILayout.Popup("Saved Deck", selectedIndex, options);
+            if (nextIndex >= 0 && nextIndex < decks.Count)
+                selectedSavedDeckId.stringValue = decks[nextIndex].deckId;
+        }
+
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Refresh Saved Decks"))
+        {
+            serializedObject.ApplyModifiedProperties();
+            manager.RefreshSavedDecks();
+            serializedObject.Update();
+        }
+
+        using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(selectedSavedDeckId.stringValue)))
+        {
+            if (GUILayout.Button("Load Selected For Editing"))
+            {
+                serializedObject.ApplyModifiedProperties();
+                if (manager.LoadDeckIntoEditor(selectedSavedDeckId.stringValue))
+                {
+                    EditorUtility.SetDirty(manager);
+                    serializedObject.Update();
+                }
+            }
+        }
+
+        if (GUILayout.Button("New Deck"))
+        {
+            serializedObject.ApplyModifiedProperties();
+            manager.StartNewDeck();
+            EditorUtility.SetDirty(manager);
+            serializedObject.Update();
+        }
+        EditorGUILayout.EndHorizontal();
+    }
+
     void DrawCardSection()
     {
         EditorGUILayout.LabelField("Card", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(cardName);
         EditorGUILayout.PropertyField(quantity);
-
-        var gameType = (CardGameType)selectedGameType.enumValueIndex;
-        EditorGUILayout.PropertyField(gameType == CardGameType.MTG ? mtgCardType : pokemonCardType);
+        EditorGUILayout.PropertyField(cardType, new GUIContent("Card Type"));
         EditorGUILayout.PropertyField(cardImage);
 
         var manager = (DeckBuilderManager)target;
@@ -140,24 +226,29 @@ public class DeckBuilderManagerEditor : Editor
         EditorGUILayout.Space(4);
         EditorGUILayout.LabelField("Sounds", EditorStyles.miniBoldLabel);
         EditorGUILayout.PropertyField(cardSummonSfxClip);
-        EditorGUILayout.PropertyField(cardEffectSfxClip);
+        if ((DeckCardType)cardType.enumValueIndex == DeckCardType.Spell)
+            EditorGUILayout.PropertyField(cardEffectSfxClip);
 
         showAudioPaths = EditorGUILayout.Foldout(showAudioPaths, "Sound File Paths", true);
         if (showAudioPaths)
         {
             EditorGUI.indentLevel++;
             EditorGUILayout.PropertyField(cardSummonSfxPath);
-            EditorGUILayout.PropertyField(cardEffectSfxPath);
+            if ((DeckCardType)cardType.enumValueIndex == DeckCardType.Spell)
+                EditorGUILayout.PropertyField(cardEffectSfxPath);
             EditorGUI.indentLevel--;
         }
 
-        EditorGUILayout.Space(4);
-        EditorGUILayout.LabelField("Spell / Rule Effect", EditorStyles.miniBoldLabel);
-        EditorGUILayout.PropertyField(cardEffectType);
-        EditorGUILayout.PropertyField(cardEffectTarget);
-        EditorGUILayout.PropertyField(cardEffectAmount);
-        EditorGUILayout.PropertyField(cardEffectDurationTurns);
-        EditorGUILayout.PropertyField(cardEffectManaCost);
+        if ((DeckCardType)cardType.enumValueIndex == DeckCardType.Spell)
+        {
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Spell / Rule Effect", EditorStyles.miniBoldLabel);
+            EditorGUILayout.PropertyField(cardEffectType);
+            EditorGUILayout.PropertyField(cardEffectTarget);
+            EditorGUILayout.PropertyField(cardEffectAmount);
+            EditorGUILayout.PropertyField(cardEffectDurationTurns);
+            EditorGUILayout.PropertyField(cardEffectManaCost);
+        }
 
         EditorGUILayout.Space(8);
     }
@@ -188,7 +279,7 @@ public class DeckBuilderManagerEditor : Editor
                 EditorUtility.SetDirty(manager);
         }
 
-        if (GUILayout.Button("Clear", GUILayout.Height(28)))
+        if (GUILayout.Button("Clear Working Deck", GUILayout.Height(28)))
         {
             serializedObject.ApplyModifiedProperties();
             manager.ClearWorkingDeck();

@@ -19,7 +19,8 @@ public class ARDeckBuilderWindow : EditorWindow
     SerializedProperty runtimeTargetLoader;
     SerializedProperty reloadRuntimeTargetsAfterSave;
     SerializedProperty deckName;
-    SerializedProperty selectedGameType;
+    SerializedProperty editingDeckId;
+    SerializedProperty selectedSavedDeckId;
     SerializedProperty workingCards;
 
     Vector2 scroll;
@@ -29,7 +30,7 @@ public class ARDeckBuilderWindow : EditorWindow
 
     string cardName = string.Empty;
     int quantity = 1;
-    MobileDeckCardType cardType = MobileDeckCardType.Creature;
+    DeckCardType cardType = DeckCardType.Creature;
     Texture2D cardImage;
     float targetWidthMeters = 0.06f;
     int health = 5;
@@ -122,12 +123,16 @@ public class ARDeckBuilderWindow : EditorWindow
         EditorGUILayout.LabelField("1. Deck Setup", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(deckDatabase);
         EditorGUILayout.PropertyField(deckName, new GUIContent("Deck Name"));
+        EditorGUI.BeginDisabledGroup(true);
+        EditorGUILayout.PropertyField(editingDeckId, new GUIContent("Editing Deck Id"));
+        EditorGUI.EndDisabledGroup();
+
+        DrawSavedDeckEditor();
 
         showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced Runtime Setup", true);
         if (showAdvanced)
         {
             EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(selectedGameType, new GUIContent("Saved Deck Format"));
             EditorGUILayout.PropertyField(runtimeTargetLoader);
             EditorGUILayout.PropertyField(reloadRuntimeTargetsAfterSave);
             EditorGUI.indentLevel--;
@@ -146,6 +151,69 @@ public class ARDeckBuilderWindow : EditorWindow
         EditorGUILayout.EndVertical();
     }
 
+    void DrawSavedDeckEditor()
+    {
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Edit Existing Deck", EditorStyles.miniBoldLabel);
+
+        var database = deckDatabase.objectReferenceValue as DeckDatabase;
+        if (database == null)
+        {
+            EditorGUILayout.HelpBox("Assign a DeckDatabase before loading saved decks.", MessageType.Info);
+            return;
+        }
+
+        var decks = database.SavedDecks;
+        if (decks.Count == 0)
+        {
+            EditorGUILayout.HelpBox("No saved decks are loaded. Press Refresh Saved Decks if you created one during Play Mode.", MessageType.Info);
+        }
+        else
+        {
+            string[] options = new string[decks.Count];
+            int selectedIndex = 0;
+            string currentDeckId = selectedSavedDeckId.stringValue;
+
+            for (int i = 0; i < decks.Count; i++)
+            {
+                DeckData deck = decks[i];
+                string id = deck?.deckId ?? string.Empty;
+                string name = string.IsNullOrWhiteSpace(deck?.deckName) ? id : deck.deckName;
+                options[i] = $"{name} ({id})";
+
+                if (!string.IsNullOrWhiteSpace(currentDeckId) &&
+                    string.Equals(currentDeckId, id, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedIndex = i;
+                }
+            }
+
+            int nextIndex = EditorGUILayout.Popup("Saved Deck", selectedIndex, options);
+            if (nextIndex >= 0 && nextIndex < decks.Count)
+                selectedSavedDeckId.stringValue = decks[nextIndex].deckId;
+        }
+
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Refresh Saved Decks", GUILayout.Height(26)))
+        {
+            managerObject.ApplyModifiedProperties();
+            manager.RefreshSavedDecks();
+            managerObject.Update();
+            statusMessage = "Saved deck list refreshed.";
+        }
+
+        using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(selectedSavedDeckId.stringValue)))
+        {
+            if (GUILayout.Button("Load Selected For Editing", GUILayout.Height(26)))
+                LoadSelectedDeckForEditing();
+        }
+
+        if (GUILayout.Button("New Deck", GUILayout.Height(26), GUILayout.Width(100)))
+            StartNewDeck();
+
+        EditorGUILayout.EndHorizontal();
+    }
+
     void DrawCardCreator()
     {
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -153,14 +221,14 @@ public class ARDeckBuilderWindow : EditorWindow
 
         cardName = EditorGUILayout.TextField("Card Name", cardName);
         quantity = Mathf.Max(1, EditorGUILayout.IntField("Quantity", quantity));
-        cardType = (MobileDeckCardType)EditorGUILayout.EnumPopup("Card Type", cardType);
+        cardType = (DeckCardType)EditorGUILayout.EnumPopup("Card Type", cardType);
         cardImage = (Texture2D)EditorGUILayout.ObjectField("Card Image", cardImage, typeof(Texture2D), false);
         targetWidthMeters = Mathf.Max(0.01f, EditorGUILayout.FloatField("Target Width (m)", targetWidthMeters));
 
-        if (cardType == MobileDeckCardType.Creature)
+        if (cardType == DeckCardType.Creature)
             DrawCreatureFields();
 
-        if (cardType == MobileDeckCardType.Spell)
+        if (cardType == DeckCardType.Spell)
             DrawSpellRuleFields();
 
         DrawModelFields();
@@ -236,14 +304,17 @@ public class ARDeckBuilderWindow : EditorWindow
         EditorGUILayout.EndHorizontal();
         summonSfxPath = EditorGUILayout.TextField("Summon Path", summonSfxPath);
 
-        effectSfxClip = (AudioClip)EditorGUILayout.ObjectField("Effect Sound", effectSfxClip, typeof(AudioClip), false);
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Use Effect Clip"))
-            PrepareAudioClip(effectSfxClip, "effect", ref effectSfxPath);
-        if (GUILayout.Button("Import Effect Audio"))
-            ImportExternalAudio("effect", ref effectSfxPath);
-        EditorGUILayout.EndHorizontal();
-        effectSfxPath = EditorGUILayout.TextField("Effect Path", effectSfxPath);
+        if (cardType == DeckCardType.Spell)
+        {
+            effectSfxClip = (AudioClip)EditorGUILayout.ObjectField("Effect Sound", effectSfxClip, typeof(AudioClip), false);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Use Effect Clip"))
+                PrepareAudioClip(effectSfxClip, "effect", ref effectSfxPath);
+            if (GUILayout.Button("Import Effect Audio"))
+                ImportExternalAudio("effect", ref effectSfxPath);
+            EditorGUILayout.EndHorizontal();
+            effectSfxPath = EditorGUILayout.TextField("Effect Path", effectSfxPath);
+        }
     }
 
     void DrawValidation()
@@ -351,9 +422,9 @@ public class ARDeckBuilderWindow : EditorWindow
         SetString(card, "cardName", cardName.Trim());
         SetInt(card, "quantity", quantity);
         SetString(card, "cardType", cardType.ToString());
-        SetInt(card, "health", cardType == MobileDeckCardType.Creature ? health : 0);
-        SetInt(card, "damage", cardType == MobileDeckCardType.Creature ? damage : 0);
-        SetInt(card, "mana", cardType == MobileDeckCardType.Creature ? mana : 0);
+        SetInt(card, "health", cardType == DeckCardType.Creature ? health : 0);
+        SetInt(card, "damage", cardType == DeckCardType.Creature ? damage : 0);
+        SetInt(card, "mana", cardType == DeckCardType.Creature ? mana : 0);
         SetString(card, "imagePath", storedImagePath);
         SetFloat(card, "targetWidthMeters", targetWidthMeters);
         SetString(card, "modelResourcePath", modelResourcePath.Trim());
@@ -361,12 +432,12 @@ public class ARDeckBuilderWindow : EditorWindow
         SetVector3(card, "modelScale", SafeScale(modelScale));
         SetColor(card, "modelTint", SafeTint(modelTint));
         SetString(card, "summonSfxPath", summonSfxPath.Trim());
-        SetEnum(card, "effectType", cardType == MobileDeckCardType.Spell ? effectType : CardEffectType.None);
-        SetEnum(card, "effectTarget", cardType == MobileDeckCardType.Spell ? effectTarget : CardEffectTarget.None);
-        SetInt(card, "effectAmount", cardType == MobileDeckCardType.Spell ? Mathf.Max(0, effectAmount) : 0);
-        SetInt(card, "effectDurationTurns", cardType == MobileDeckCardType.Spell ? Mathf.Max(0, effectDurationTurns) : 0);
-        SetInt(card, "effectManaCost", cardType == MobileDeckCardType.Spell ? Mathf.Max(0, effectManaCost) : 0);
-        SetString(card, "effectSfxPath", effectSfxPath.Trim());
+        SetEnum(card, "effectType", cardType == DeckCardType.Spell ? effectType : CardEffectType.None);
+        SetEnum(card, "effectTarget", cardType == DeckCardType.Spell ? effectTarget : CardEffectTarget.None);
+        SetInt(card, "effectAmount", cardType == DeckCardType.Spell ? Mathf.Max(0, effectAmount) : 0);
+        SetInt(card, "effectDurationTurns", cardType == DeckCardType.Spell ? Mathf.Max(0, effectDurationTurns) : 0);
+        SetInt(card, "effectManaCost", cardType == DeckCardType.Spell ? Mathf.Max(0, effectManaCost) : 0);
+        SetString(card, "effectSfxPath", cardType == DeckCardType.Spell ? effectSfxPath.Trim() : string.Empty);
 
         managerObject.ApplyModifiedProperties();
         MarkManagerDirty();
@@ -388,6 +459,29 @@ public class ARDeckBuilderWindow : EditorWindow
             statusMessage = "Deck could not be saved. Check the Console for details.";
         }
 
+        MarkManagerDirty();
+    }
+
+    void LoadSelectedDeckForEditing()
+    {
+        managerObject.ApplyModifiedProperties();
+        if (manager.LoadDeckIntoEditor(selectedSavedDeckId.stringValue))
+        {
+            managerObject.Update();
+            statusMessage = "Loaded saved deck into the working editor.";
+            MarkManagerDirty();
+            return;
+        }
+
+        statusMessage = "Saved deck could not be loaded. Check the Console for details.";
+    }
+
+    void StartNewDeck()
+    {
+        managerObject.ApplyModifiedProperties();
+        manager.StartNewDeck();
+        managerObject.Update();
+        statusMessage = "Started a new empty deck.";
         MarkManagerDirty();
     }
 
@@ -462,7 +556,7 @@ public class ARDeckBuilderWindow : EditorWindow
     {
         cardName = string.Empty;
         quantity = 1;
-        cardType = MobileDeckCardType.Creature;
+        cardType = DeckCardType.Creature;
         cardImage = null;
         targetWidthMeters = 0.06f;
         health = 5;
@@ -620,7 +714,7 @@ public class ARDeckBuilderWindow : EditorWindow
             return;
         }
 
-        string id = BuildDeckId(deckName.stringValue, (CardGameType)selectedGameType.enumValueIndex);
+        string id = manager.CurrentDeckId;
         loader.SetDeckIdToLoad(id);
         MarkLoaderDirty(loader);
         statusMessage = $"Runtime loader set to deck id '{id}'.";
@@ -650,7 +744,7 @@ public class ARDeckBuilderWindow : EditorWindow
         if (cardImage == null)
             return "Card image is required so Vuforia has something to scan.";
 
-        if (cardType == MobileDeckCardType.Creature)
+        if (cardType == DeckCardType.Creature)
         {
             if (health <= 0 || damage <= 0)
                 return "Creature cards need health and damage above 0.";
@@ -659,7 +753,7 @@ public class ARDeckBuilderWindow : EditorWindow
                 return "Creature cards need a model Resources path or runtime OBJ path.";
         }
 
-        if (cardType == MobileDeckCardType.Spell)
+        if (cardType == DeckCardType.Spell)
         {
             if (effectType == CardEffectType.None)
                 return "Spell cards need an effect type.";
@@ -692,7 +786,7 @@ public class ARDeckBuilderWindow : EditorWindow
             if (string.IsNullOrWhiteSpace(GetString(card, "imagePath")))
                 missingImages++;
 
-            if (string.Equals(type, MobileDeckCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(type, DeckCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase))
             {
                 if (GetInt(card, "health") <= 0 || GetInt(card, "damage") <= 0)
                     badCreatureStats++;
@@ -704,7 +798,7 @@ public class ARDeckBuilderWindow : EditorWindow
                 }
             }
 
-            if (string.Equals(type, MobileDeckCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(type, DeckCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase))
             {
                 var ruleType = (CardEffectType)card.FindPropertyRelative("effectType").enumValueIndex;
                 var target = (CardEffectTarget)card.FindPropertyRelative("effectTarget").enumValueIndex;
@@ -735,9 +829,8 @@ public class ARDeckBuilderWindow : EditorWindow
     {
         var deck = new DeckData
         {
-            deckId = BuildDeckId(deckName.stringValue, (CardGameType)selectedGameType.enumValueIndex),
+            deckId = manager != null ? manager.CurrentDeckId : BuildDeckId(deckName.stringValue),
             deckName = string.IsNullOrWhiteSpace(deckName.stringValue) ? "Untitled Deck" : deckName.stringValue.Trim(),
-            gameType = (CardGameType)selectedGameType.enumValueIndex,
             cards = new List<DeckCardEntry>()
         };
 
@@ -782,7 +875,6 @@ public class ARDeckBuilderWindow : EditorWindow
         builder.AppendLine($"# {deck.deckName}");
         builder.AppendLine();
         builder.AppendLine($"- Deck ID: `{deck.deckId}`");
-        builder.AppendLine($"- Saved format: `{deck.gameType}`");
         builder.AppendLine($"- Cards: `{deck.cards.Count}`");
         builder.AppendLine($"- Generated: `{DateTime.Now:yyyy-MM-dd HH:mm}`");
         builder.AppendLine();
@@ -799,9 +891,9 @@ public class ARDeckBuilderWindow : EditorWindow
             builder.AppendLine($"### {i + 1}. {card.cardName}");
             builder.AppendLine($"- Quantity: `{card.quantity}`");
             builder.AppendLine($"- Type: `{card.cardType}`");
-            if (string.Equals(card.cardType, MobileDeckCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(card.cardType, DeckCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase))
                 builder.AppendLine($"- Stats: `{card.health} HP / {card.damage} DMG / {card.mana} Mana`");
-            if (string.Equals(card.cardType, MobileDeckCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(card.cardType, DeckCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase))
                 builder.AppendLine($"- Effect: `{DescribeEffect(card)}`");
             builder.AppendLine($"- Image Target: `{card.imagePath}`");
             builder.AppendLine($"- Model: `{FirstNonEmpty(card.modelResourcePath, card.customModelPath, "None")}`");
@@ -838,9 +930,9 @@ public class ARDeckBuilderWindow : EditorWindow
 
                 builder.AppendLine($"<div class=\"name\">{EscapeHtml(card.cardName)}</div>");
                 builder.AppendLine($"<div class=\"meta\">{EscapeHtml(card.cardType)}");
-                if (string.Equals(card.cardType, MobileDeckCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(card.cardType, DeckCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase))
                     builder.AppendLine($" | HP {card.health} | DMG {card.damage} | Mana {card.mana}");
-                if (string.Equals(card.cardType, MobileDeckCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(card.cardType, DeckCardType.Spell.ToString(), StringComparison.OrdinalIgnoreCase))
                     builder.AppendLine($" | {EscapeHtml(DescribeEffect(card))}");
                 builder.AppendLine("</div></div>");
             }
@@ -852,7 +944,7 @@ public class ARDeckBuilderWindow : EditorWindow
 
     void RefreshSceneReferences()
     {
-        manager = FindFirstObjectByType<DeckBuilderManager>();
+        manager = FindFirstObjectByType<DeckBuilderManager>(FindObjectsInactive.Include);
         RefreshSerializedObject();
     }
 
@@ -864,12 +956,16 @@ public class ARDeckBuilderWindow : EditorWindow
             return;
         }
 
+        if (manager.ResolveSceneReferences())
+            EditorUtility.SetDirty(manager);
+
         managerObject = new SerializedObject(manager);
         deckDatabase = managerObject.FindProperty("deckDatabase");
         runtimeTargetLoader = managerObject.FindProperty("runtimeTargetLoader");
         reloadRuntimeTargetsAfterSave = managerObject.FindProperty("reloadRuntimeTargetsAfterSave");
         deckName = managerObject.FindProperty("deckName");
-        selectedGameType = managerObject.FindProperty("selectedGameType");
+        editingDeckId = managerObject.FindProperty("editingDeckId");
+        selectedSavedDeckId = managerObject.FindProperty("selectedSavedDeckId");
         workingCards = managerObject.FindProperty("workingCards");
     }
 
@@ -888,16 +984,16 @@ public class ARDeckBuilderWindow : EditorWindow
         if (managerObject == null)
             return;
 
-        DeckRuntimeImageTargetLoader loader = FindFirstObjectByType<DeckRuntimeImageTargetLoader>();
-        if (loader != null)
+        managerObject.ApplyModifiedProperties();
+        if (manager != null && manager.ResolveSceneReferences())
         {
-            runtimeTargetLoader.objectReferenceValue = loader;
-            if (deckDatabase.objectReferenceValue == null)
-                deckDatabase.objectReferenceValue = loader.DeckDatabase;
+            RefreshSerializedObject();
+            MarkManagerDirty();
+            statusMessage = "Scene references auto-filled.";
+            return;
         }
 
-        managerObject.ApplyModifiedProperties();
-        MarkManagerDirty();
+        statusMessage = "No missing scene references were found.";
     }
 
     DeckRuntimeImageTargetLoader GetRuntimeLoader()
@@ -905,7 +1001,7 @@ public class ARDeckBuilderWindow : EditorWindow
         if (runtimeTargetLoader != null && runtimeTargetLoader.objectReferenceValue is DeckRuntimeImageTargetLoader assignedLoader)
             return assignedLoader;
 
-        return FindFirstObjectByType<DeckRuntimeImageTargetLoader>();
+        return FindFirstObjectByType<DeckRuntimeImageTargetLoader>(FindObjectsInactive.Include);
     }
 
     string CopyProjectAssetToImportedModels(string sourceAssetPath)
@@ -975,10 +1071,10 @@ public class ARDeckBuilderWindow : EditorWindow
         return Path.ChangeExtension(resourcePath, null).Replace("\\", "/");
     }
 
-    static string BuildDeckId(string name, CardGameType gameType)
+    static string BuildDeckId(string name)
     {
         string safeName = string.IsNullOrWhiteSpace(name) ? "deck" : name.Trim();
-        return $"{gameType}-{safeName}".ToLowerInvariant().Replace(" ", "-");
+        return safeName.ToLowerInvariant().Replace(" ", "-");
     }
 
     static string ToAbsoluteProjectPath(string assetPath)

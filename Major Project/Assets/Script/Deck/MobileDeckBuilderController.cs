@@ -19,14 +19,6 @@ public class BuiltInSoundOption
     public string resourcesPath;
 }
 
-public enum MobileDeckCardType
-{
-    Summoner,
-    Creature,
-    Spell,
-    Land
-}
-
 public class MobileDeckBuilderController : MonoBehaviour
 {
     static readonly DeckData[] EmptyDecks = Array.Empty<DeckData>();
@@ -44,11 +36,12 @@ public class MobileDeckBuilderController : MonoBehaviour
 
     [Header("Current Deck")]
     [SerializeField] string deckName = "My Mobile Deck";
+    [SerializeField] string editingDeckId = "";
 
     [Header("Current Card")]
     [SerializeField] string cardName = "";
     [SerializeField] int quantity = 1;
-    [SerializeField] MobileDeckCardType selectedCardType = MobileDeckCardType.Summoner;
+    [SerializeField] DeckCardType selectedCardType = DeckCardType.Summoner;
     [SerializeField] int health;
     [SerializeField] int damage;
     [SerializeField] int mana;
@@ -75,7 +68,7 @@ public class MobileDeckBuilderController : MonoBehaviour
     public string SelectedModelResourcePath => selectedModelResourcePath;
     public string SelectedCustomModelPath => selectedCustomModelPath;
     public string SelectedSummonSfxPath => selectedSummonSfxPath;
-    public bool CurrentCardNeedsStats => selectedCardType == MobileDeckCardType.Creature;
+    public bool CurrentCardNeedsStats => selectedCardType == DeckCardType.Creature;
 
     void Awake()
     {
@@ -108,7 +101,7 @@ public class MobileDeckBuilderController : MonoBehaviour
 
     public void SetCardType(int cardTypeIndex)
     {
-        selectedCardType = (MobileDeckCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(MobileDeckCardType)).Length - 1);
+        selectedCardType = (DeckCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(DeckCardType)).Length - 1);
         SetStatus($"Card type set to {selectedCardType}.");
     }
 
@@ -341,7 +334,7 @@ public class MobileDeckBuilderController : MonoBehaviour
             effectSfxPath = string.Empty
         };
 
-        if (selectedCardType == MobileDeckCardType.Creature)
+        if (selectedCardType == DeckCardType.Creature)
         {
             if (health <= 0 || damage <= 0)
             {
@@ -390,13 +383,13 @@ public class MobileDeckBuilderController : MonoBehaviour
 
         var deck = new DeckData
         {
-            deckId = BuildDeckId(deckName, CardGameType.MTG),
+            deckId = string.IsNullOrWhiteSpace(editingDeckId) ? BuildDeckId(deckName) : editingDeckId.Trim(),
             deckName = deckName.Trim(),
-            gameType = CardGameType.MTG,
-            cards = new List<DeckCardEntry>(workingCards)
+            cards = CloneCards(workingCards)
         };
 
         deckDatabase.AddOrUpdateDeck(deck);
+        editingDeckId = deck.deckId;
 
         if (runtimeTargetLoader != null)
         {
@@ -426,6 +419,7 @@ public class MobileDeckBuilderController : MonoBehaviour
         }
 
         deckName = deck.deckName;
+        editingDeckId = deck.deckId;
         workingCards = CloneCards(deck.cards);
         SetStatus($"Loaded deck '{deck.deckName}' for editing.");
     }
@@ -499,6 +493,7 @@ public class MobileDeckBuilderController : MonoBehaviour
     public void ClearWorkingDeck()
     {
         workingCards.Clear();
+        editingDeckId = string.Empty;
         SetStatus("Working deck cleared.");
     }
 
@@ -506,7 +501,7 @@ public class MobileDeckBuilderController : MonoBehaviour
     {
         cardName = string.Empty;
         quantity = 1;
-        selectedCardType = MobileDeckCardType.Summoner;
+        selectedCardType = DeckCardType.Summoner;
         health = 0;
         damage = 0;
         mana = 0;
@@ -524,15 +519,16 @@ public class MobileDeckBuilderController : MonoBehaviour
         return string.IsNullOrWhiteSpace(cardName) ? "card" : cardName.Trim();
     }
 
-    static string BuildDeckId(string name, CardGameType gameType)
+    static string BuildDeckId(string name)
     {
-        return $"{gameType}-{name}".ToLowerInvariant().Replace(" ", "-");
+        string safeName = string.IsNullOrWhiteSpace(name) ? "deck" : name.Trim().ToLowerInvariant();
+        return safeName.Replace(" ", "-");
     }
 
     void ResolveSceneReferences()
     {
         if (runtimeTargetLoader == null)
-            runtimeTargetLoader = FindFirstObjectByType<DeckRuntimeImageTargetLoader>();
+            runtimeTargetLoader = FindFirstObjectByType<DeckRuntimeImageTargetLoader>(FindObjectsInactive.Include);
 
         if (deckDatabase == null && runtimeTargetLoader != null)
             deckDatabase = runtimeTargetLoader.DeckDatabase;

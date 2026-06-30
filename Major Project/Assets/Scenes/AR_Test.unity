@@ -10654,11 +10654,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DeckBuilderManager
   deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
   deckName: Test Deck
-  selectedGameType: 0
+  editingDeckId: test-deck
+  selectedSavedDeckId: test-deck
   cardName: melusine
   quantity: 1
-  mtgCardType: 0
-  pokemonCardType: 0
+  cardType: 1
   cardImage: {fileID: 2800000, guid: 7a9a9d34020946c88f9762e3ffd17837, type: 3}
   targetWidthMeters: 0.06
   health: 23
@@ -10686,7 +10686,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DeckRuntimeImageTargetLoader
   deckDatabase: {fileID: 11400000, guid: dbc037cfc4e94174a86712af1fc454f3, type: 2}
-  deckIdToLoad: mtg-test-deck
+  deckIdToLoad: test-deck
 --- !u!4 &1050272561
 Transform:
   m_ObjectHideFlags: 0
