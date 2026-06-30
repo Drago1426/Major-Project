@@ -8,15 +8,15 @@ public class CreatureCombat : MonoBehaviour
     public GameObject glowRing;
 
     [Header("Projectile")]
-    public GameObject fireballPrefab;
-    public float fireballSpeed = 2.0f;
-    public float fireballLife = 2.0f;
+    public GameObject projectilePrefab;
+    public float projectileSpeed = 2.0f;
+    public float projectileLife = 2.0f;
 
     [Header("Attack State")]
     public bool canAttack = false;
     public float attackCooldown = 1.0f;
 
-    bool _onCooldown;
+    bool onCooldown;
 
     void Start()
     {
@@ -26,39 +26,42 @@ public class CreatureCombat : MonoBehaviour
     public void SetCanAttack(bool value)
     {
         canAttack = value;
-        SetGlow(canAttack && !_onCooldown);
-    }
-
-    void SetGlow(bool on)
-    {
-        if (glowRing != null) glowRing.SetActive(on);
+        SetGlow(canAttack && !onCooldown);
     }
 
     public void TryAttack()
     {
-        if (!canAttack || _onCooldown) return;
-        if (muzzle == null || fireballPrefab == null) return;
+        if (!canAttack || onCooldown)
+            return;
 
-        GameObject fb = Instantiate(fireballPrefab, muzzle.position, muzzle.rotation);
-
-        var rb = fb.GetComponent<Rigidbody>();
-        if (rb != null)
+        if (muzzle != null && projectilePrefab != null)
         {
-            rb.useGravity = false;
-            rb.linearVelocity = muzzle.forward * fireballSpeed;
-        }
+            GameObject projectile = Instantiate(projectilePrefab, muzzle.position, muzzle.rotation);
+            var body = projectile.GetComponent<Rigidbody>();
+            if (body != null)
+            {
+                body.useGravity = false;
+                body.linearVelocity = muzzle.forward * projectileSpeed;
+            }
 
-        Destroy(fb, fireballLife);
+            Destroy(projectile, projectileLife);
+        }
 
         StartCoroutine(Cooldown());
     }
 
+    void SetGlow(bool on)
+    {
+        if (glowRing != null)
+            glowRing.SetActive(on);
+    }
+
     IEnumerator Cooldown()
     {
-        _onCooldown = true;
+        onCooldown = true;
         SetGlow(false);
         yield return new WaitForSeconds(attackCooldown);
-        _onCooldown = false;
+        onCooldown = false;
         SetGlow(canAttack);
     }
 }

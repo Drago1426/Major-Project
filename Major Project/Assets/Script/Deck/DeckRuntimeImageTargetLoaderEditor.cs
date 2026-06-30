@@ -14,8 +14,6 @@ public class DeckRuntimeImageTargetLoaderEditor : Editor
     SerializedProperty addSummonOnTargetFoundToRuntimeTargets;
     SerializedProperty disableSceneTargetsMatchingLoadedDeck;
     SerializedProperty defaultRuntimeCreaturePrefab;
-    SerializedProperty enableFireballAbilityCards;
-    SerializedProperty fireballAbilityCardKeyword;
     SerializedProperty cardModelOverrides;
     SerializedProperty useSingleVisibleRuntimeCreatureLock;
     SerializedProperty hideRuntimeCreatureOnTargetLost;
@@ -45,8 +43,6 @@ public class DeckRuntimeImageTargetLoaderEditor : Editor
         addSummonOnTargetFoundToRuntimeTargets = serializedObject.FindProperty("addSummonOnTargetFoundToRuntimeTargets");
         disableSceneTargetsMatchingLoadedDeck = serializedObject.FindProperty("disableSceneTargetsMatchingLoadedDeck");
         defaultRuntimeCreaturePrefab = serializedObject.FindProperty("defaultRuntimeCreaturePrefab");
-        enableFireballAbilityCards = serializedObject.FindProperty("enableFireballAbilityCards");
-        fireballAbilityCardKeyword = serializedObject.FindProperty("fireballAbilityCardKeyword");
         cardModelOverrides = serializedObject.FindProperty("cardModelOverrides");
         useSingleVisibleRuntimeCreatureLock = serializedObject.FindProperty("useSingleVisibleRuntimeCreatureLock");
         hideRuntimeCreatureOnTargetLost = serializedObject.FindProperty("hideRuntimeCreatureOnTargetLost");
@@ -67,7 +63,6 @@ public class DeckRuntimeImageTargetLoaderEditor : Editor
 
         DrawActions();
         DrawBasicSetup();
-        DrawAbilityCards();
         DrawOptionalSections();
         DrawAdvanced();
 
@@ -108,16 +103,6 @@ public class DeckRuntimeImageTargetLoaderEditor : Editor
         EditorGUILayout.PropertyField(deckIdToLoad);
         EditorGUILayout.PropertyField(autoLoadOnStart);
         EditorGUILayout.PropertyField(defaultRuntimeCreaturePrefab);
-        EditorGUILayout.Space(8);
-    }
-
-    void DrawAbilityCards()
-    {
-        EditorGUILayout.LabelField("Ability Cards", EditorStyles.boldLabel);
-        EditorGUILayout.PropertyField(enableFireballAbilityCards);
-        if (enableFireballAbilityCards.boolValue)
-            EditorGUILayout.PropertyField(fireballAbilityCardKeyword);
-
         EditorGUILayout.Space(8);
     }
 

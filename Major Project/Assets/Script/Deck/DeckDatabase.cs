@@ -32,6 +32,28 @@ public enum PokemonCardType
     Tool
 }
 
+public enum CardEffectType
+{
+    None,
+    Attack,
+    BuffDamage,
+    BuffHealth,
+    Heal,
+    ManaGain,
+    DrawCard,
+    Shield
+}
+
+public enum CardEffectTarget
+{
+    None,
+    Self,
+    FriendlyCreature,
+    EnemyCreature,
+    AnyCreature,
+    Player
+}
+
 [Serializable]
 public class DeckCardEntry
 {
@@ -63,8 +85,18 @@ public class DeckCardEntry
     [Header("Audio")]
     [Tooltip("Absolute file path or Resources path for the sound played when this card summons.")]
     public string summonSfxPath;
-    [Tooltip("Absolute file path or Resources path for the sound played when this card fires on interaction.")]
-    public string fireballSfxPath;
+
+    [Header("Spell / Rule Effect")]
+    public CardEffectType effectType = CardEffectType.None;
+    public CardEffectTarget effectTarget = CardEffectTarget.None;
+    [Tooltip("Generic value for the effect, such as damage, healing, buff amount, mana gained, or cards drawn.")]
+    public int effectAmount;
+    [Tooltip("How many turns the effect lasts. Use 0 for instant effects.")]
+    public int effectDurationTurns;
+    [Tooltip("Mana required to play this card effect.")]
+    public int effectManaCost;
+    [Tooltip("Absolute file path or Resources path for the sound played when this card effect is used.")]
+    public string effectSfxPath;
 
     public bool NeedsCombatStats(CardGameType gameType)
     {
@@ -104,9 +136,9 @@ public class DeckCardEntry
         return !string.IsNullOrWhiteSpace(summonSfxPath);
     }
 
-    public bool HasFireballSfxPath()
+    public bool HasEffectSfxPath()
     {
-        return !string.IsNullOrWhiteSpace(fireballSfxPath);
+        return !string.IsNullOrWhiteSpace(effectSfxPath);
     }
 
     public Vector3 SafeModelScale()

@@ -15,7 +15,7 @@ public class BuiltInModelOption
 public class BuiltInSoundOption
 {
     public string displayName;
-    [Tooltip("Resources path without file extension, e.g. Effects/Sound/fireBall.")]
+    [Tooltip("Resources path without file extension, e.g. Effects/Sound/spellEffect.")]
     public string resourcesPath;
 }
 
@@ -333,7 +333,12 @@ public class MobileDeckBuilderController : MonoBehaviour
             modelScale = SafeModelScale(modelScale),
             modelTint = SafeModelTint(modelTint),
             summonSfxPath = selectedSummonSfxPath,
-            fireballSfxPath = string.Empty
+            effectType = CardEffectType.None,
+            effectTarget = CardEffectTarget.None,
+            effectAmount = 0,
+            effectDurationTurns = 0,
+            effectManaCost = 0,
+            effectSfxPath = string.Empty
         };
 
         if (selectedCardType == MobileDeckCardType.Creature)
@@ -578,7 +583,12 @@ public class MobileDeckBuilderController : MonoBehaviour
                 modelScale = source.SafeModelScale(),
                 modelTint = source.SafeModelTint(),
                 summonSfxPath = source.summonSfxPath,
-                fireballSfxPath = source.fireballSfxPath
+                effectType = source.effectType,
+                effectTarget = source.effectTarget,
+                effectAmount = source.effectAmount,
+                effectDurationTurns = source.effectDurationTurns,
+                effectManaCost = source.effectManaCost,
+                effectSfxPath = source.effectSfxPath
             });
         }
 

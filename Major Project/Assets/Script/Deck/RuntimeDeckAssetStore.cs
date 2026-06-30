@@ -109,9 +109,9 @@ public static class RuntimeDeckAssetStore
         yield return DownloadFile(url, CardAudioFolder, cardName, "summon", AudioExtensions, onSaved, onError);
     }
 
-    public static IEnumerator DownloadFireballAudio(string url, string cardName, Action<string> onSaved, Action<string> onError)
+    public static IEnumerator DownloadEffectAudio(string url, string cardName, Action<string> onSaved, Action<string> onError)
     {
-        yield return DownloadFile(url, CardAudioFolder, cardName, "fireball", AudioExtensions, onSaved, onError);
+        yield return DownloadFile(url, CardAudioFolder, cardName, "effect", AudioExtensions, onSaved, onError);
     }
 
     public static IEnumerator DownloadModel(string url, string cardName, Action<string> onSaved, Action<string> onError)

@@ -9,7 +9,7 @@ Project type: **Interactive AR card game / runtime deck builder**
 
 This journal records the development process for the AR Card Deck Builder project. It includes dated entries, observations, technical decisions, problems encountered, and evidence prompts for screenshots or photos. The entries follow the project timeline shown through the Git commit history and are intended to show how the project developed over time.
 
-The project started as an AR image tracking experiment and gradually became a runtime deck builder where users can scan custom card images, spawn 3D models, display stats, trigger animations, and use card-based interactions such as a Fireball ability card.
+The project started as an AR image tracking experiment and gradually became a runtime deck builder where users can scan custom card images, spawn 3D models, display stats, trigger animations, and define card-based interaction rules.
 
 ## Image Evidence Notes
 
@@ -20,7 +20,7 @@ The journal includes image evidence placeholders. These should be replaced with 
 - Printed card photos.
 - Phone camera / iVCam testing photos.
 - Vuforia image target setup screenshots.
-- Gameplay screenshots showing spawned models, stats, fire tornado particles, and Fireball interactions.
+- Gameplay screenshots showing spawned models, stats, fire tornado particles, and spell/rule interactions.
 
 Suggested image folder:
 
@@ -477,40 +477,40 @@ Documentation/Journal Images/2026-05-20-fire-tornado-sound.png
 
 ## Entry 16 - 20 May 2026
 
-### Fireball Card Implementation
+### Spell Rule Card Prototype
 
-The Fireball card was implemented as an ability card. Instead of spawning its own model, scanning the Fireball card arms the currently visible creature. The model glows yellow, and the next click triggers a fireball animation and sound effect.
+A spell rule card prototype was implemented to explore how cards could do more than spawn models. Instead of limiting the project to creature cards, spell cards can now describe gameplay effects such as attacks, buffs, healing, mana gain, draw effects, and shields.
 
 ### Work Produced
 
-- Added Fireball ability card behavior.
-- Added yellow armed glow effect.
-- Added fireball projectile particle animation.
-- Required the Fireball card to be scanned before the model can fire.
+- Added spell/rule card behavior data.
+- Added fields for effect type, target, amount, duration, mana cost, and effect sound.
+- Added a structure that can support attack, buff, healing, mana, draw, and shield effects.
+- Kept creature cards focused on spawning and model interaction feedback.
 - Made the model stay visible after looking away from the creature card.
-- Added one-use interaction: after firing, the creature must be armed again by scanning the Fireball card.
+- Prepared the project for a future turn-based battle system.
 
 ### Observations
 
 This made the card system more game-like. Cards can now do more than spawn models; they can also enable actions. This opens the project to future ability cards such as healing, shields, elemental attacks, or buffs.
 
-One issue discovered during testing was that if the creature disappeared when looking away, the Fireball card could not arm it. This led to changing the behavior so creatures remain visible after being scanned.
+One issue discovered during testing was that if the creature disappeared when looking away, card interactions became difficult to follow. This led to changing the behavior so creatures remain visible after being scanned.
 
 ### Peer Testing / Feedback
 
-The TCG-focused tester also suggested that the project would feel more complete with a proper app-style UI and full match tracking, such as tracking the state of a game rather than only showing individual cards and effects. These ideas were not implemented because of time constraints and because they would have required a much larger gameplay system. Instead, the project was kept focused as an expandable AR deck builder, with the Fireball card used as a proof of concept for future ability cards.
+The TCG-focused tester also suggested that the project would feel more complete with a proper app-style UI and full match tracking, such as tracking the state of a game rather than only showing individual cards and effects. These ideas were not fully implemented because of time constraints and because they would have required a much larger gameplay system. Instead, the project was kept focused as an expandable AR deck builder, with spell/rule cards used as a proof of concept for future ability cards.
 
 ### Image Evidence To Add
 
 Add three screenshots or photos:
 
 1. Creature visible after scanning.
-2. Fireball card scanned and creature glowing yellow.
-3. Fireball projectile firing after clicking the creature.
+2. Spell/rule card settings in the deck builder.
+3. Creature interaction feedback after clicking the model.
 
 ```text
-Documentation/Journal Images/2026-05-20-fireball-card-armed.png
-Documentation/Journal Images/2026-05-20-fireball-projectile.png
+Documentation/Journal Images/2026-05-20-spell-rule-settings.png
+Documentation/Journal Images/2026-05-20-creature-interaction-feedback.png
 ```
 
 ---
@@ -560,7 +560,7 @@ The project developed from a simple Unity AR test into a runtime AR card deck bu
 
 The most important technical challenge was connecting user-created deck data to runtime AR behavior. The card image, model path, stats, and sounds all needed to be saved in the deck and then loaded into the Vuforia runtime target system. This made the project more flexible because users are not limited to one fixed set of cards.
 
-Another major challenge was interaction flow. The Fireball card revealed that if creatures disappeared when the original card was no longer visible, ability cards could not work properly. The solution was to keep the creature visible after scanning, then allow ability cards to arm the active model.
+Another major challenge was interaction flow. Testing showed that if creatures disappeared when the original card was no longer visible, interactions were harder to understand. The solution was to keep the creature visible after scanning, then use spell/rule data as the foundation for future card effects.
 
 Peer testing also helped define the final scope of the project. The feedback showed that a full mobile app UI and match-tracking system would be useful in the future, but the most achievable final version was an AR deck builder that demonstrates custom cards, runtime scanning, creature spawning, stats, sound, particles, and ability-card interaction.
 
@@ -587,8 +587,8 @@ Before submitting, collect or add these dated images:
 - `2026-04-28-card-to-model-link.png` - card data linked to model.
 - `2026-04-29-stats-ui.png` - health/mana/damage display.
 - `2026-05-20-fire-tornado-sound.png` - improved VFX/audio setup.
-- `2026-05-20-fireball-card-armed.png` - Fireball card glow.
-- `2026-05-20-fireball-projectile.png` - Fireball fired from model.
+- `2026-05-20-spell-rule-settings.png` - spell/rule card settings.
+- `2026-05-20-creature-interaction-feedback.png` - creature interaction feedback.
 - `2026-05-28-readme-documentation.png` - README/documentation.
 
 These images should be placed in a documentation folder and referenced from this journal if required for submission.

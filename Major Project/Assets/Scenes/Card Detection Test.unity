@@ -281,7 +281,7 @@ MonoBehaviour:
   reloadRuntimeTargetsAfterSave: 1
   deckName: Test Deck
   selectedGameType: 0
-  cardName: Fireball
+  cardName: Spell Example
   quantity: 1
   mtgCardType: 1
   pokemonCardType: 0
@@ -291,8 +291,13 @@ MonoBehaviour:
   cardModelResourcePath: 
   cardSummonSfxClip: {fileID: 0}
   cardSummonSfxPath: 
-  cardFireballSfxClip: {fileID: 0}
-  cardFireballSfxPath: 
+  cardEffectSfxClip: {fileID: 0}
+  cardEffectSfxPath: 
+  cardEffectType: 1
+  cardEffectTarget: 3
+  cardEffectAmount: 1
+  cardEffectDurationTurns: 0
+  cardEffectManaCost: 1
   health: 6
   damage: 5
   mana: 4
@@ -307,7 +312,12 @@ MonoBehaviour:
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireTroll_Prefab
     summonSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Cinder_summon_3da91cf9b8dc4fa6ae576f4b3c19579a.mp3
-    fireballSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Cinder_fireball_39dae3bf4a6646f48a4c3378d7a926d4.mp3
+    effectType: 0
+    effectTarget: 0
+    effectAmount: 0
+    effectDurationTurns: 0
+    effectManaCost: 0
+    effectSfxPath: 
   - cardName: Sunfyre
     quantity: 1
     cardType: Creature
@@ -318,7 +328,12 @@ MonoBehaviour:
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireDragon_Prefab
     summonSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Sunfyre_summon_a777340a52984b0ea7fce6398543c7eb.mp3
-    fireballSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Sunfyre_fireball_0fef202e47ae4833852d936dd92ff114.mp3
+    effectType: 0
+    effectTarget: 0
+    effectAmount: 0
+    effectDurationTurns: 0
+    effectManaCost: 0
+    effectSfxPath: 
   - cardName: Seraphina
     quantity: 1
     cardType: Creature
@@ -329,18 +344,12 @@ MonoBehaviour:
     targetWidthMeters: 0.06
     modelResourcePath: Card Models/FireMermaid_Prefab
     summonSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Seraphina_summon_9a0e38c429914159a2aefaa359f4daa5.mp3
-    fireballSfxPath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_audio\Seraphina_fireball_d1521172367c4472b7aaf02f1cfa9c89.mp3
-  - cardName: Fireball
-    quantity: 1
-    cardType: Spell
-    health: 0
-    damage: 0
-    mana: 0
-    imagePath: C:/Users/peter/AppData/LocalLow/DefaultCompany/Major Project\deck_card_images\Fireball_b43d908103f14e5cba1deb61dd047b4c.png
-    targetWidthMeters: 0.06
-    modelResourcePath: Card Models/FireMermaid_Prefab
-    summonSfxPath: 
-    fireballSfxPath: 
+    effectType: 0
+    effectTarget: 0
+    effectAmount: 0
+    effectDurationTurns: 0
+    effectManaCost: 0
+    effectSfxPath: 
 --- !u!114 &894206190
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -362,8 +371,6 @@ MonoBehaviour:
   addSummonOnTargetFoundToRuntimeTargets: 1
   disableSceneTargetsMatchingLoadedDeck: 1
   defaultRuntimeCreaturePrefab: {fileID: 3525536196938450821, guid: 8b13f26c65ca31c4189a91ad87f1b824, type: 3}
-  enableFireballAbilityCards: 1
-  fireballAbilityCardKeyword: Fireball
   cardModelOverrides:
   - cardName: Sunfyre
     modelPrefab: {fileID: 3732784891141228725, guid: 8d84535527e23f6468e9868544d18e87, type: 3}

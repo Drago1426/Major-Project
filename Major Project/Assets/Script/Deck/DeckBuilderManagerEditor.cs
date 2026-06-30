@@ -23,8 +23,13 @@ public class DeckBuilderManagerEditor : Editor
     SerializedProperty cardModelTint;
     SerializedProperty cardSummonSfxClip;
     SerializedProperty cardSummonSfxPath;
-    SerializedProperty cardFireballSfxClip;
-    SerializedProperty cardFireballSfxPath;
+    SerializedProperty cardEffectSfxClip;
+    SerializedProperty cardEffectSfxPath;
+    SerializedProperty cardEffectType;
+    SerializedProperty cardEffectTarget;
+    SerializedProperty cardEffectAmount;
+    SerializedProperty cardEffectDurationTurns;
+    SerializedProperty cardEffectManaCost;
     SerializedProperty health;
     SerializedProperty damage;
     SerializedProperty mana;
@@ -55,8 +60,13 @@ public class DeckBuilderManagerEditor : Editor
         cardModelTint = serializedObject.FindProperty("cardModelTint");
         cardSummonSfxClip = serializedObject.FindProperty("cardSummonSfxClip");
         cardSummonSfxPath = serializedObject.FindProperty("cardSummonSfxPath");
-        cardFireballSfxClip = serializedObject.FindProperty("cardFireballSfxClip");
-        cardFireballSfxPath = serializedObject.FindProperty("cardFireballSfxPath");
+        cardEffectSfxClip = serializedObject.FindProperty("cardEffectSfxClip");
+        cardEffectSfxPath = serializedObject.FindProperty("cardEffectSfxPath");
+        cardEffectType = serializedObject.FindProperty("cardEffectType");
+        cardEffectTarget = serializedObject.FindProperty("cardEffectTarget");
+        cardEffectAmount = serializedObject.FindProperty("cardEffectAmount");
+        cardEffectDurationTurns = serializedObject.FindProperty("cardEffectDurationTurns");
+        cardEffectManaCost = serializedObject.FindProperty("cardEffectManaCost");
         health = serializedObject.FindProperty("health");
         damage = serializedObject.FindProperty("damage");
         mana = serializedObject.FindProperty("mana");
@@ -130,16 +140,24 @@ public class DeckBuilderManagerEditor : Editor
         EditorGUILayout.Space(4);
         EditorGUILayout.LabelField("Sounds", EditorStyles.miniBoldLabel);
         EditorGUILayout.PropertyField(cardSummonSfxClip);
-        EditorGUILayout.PropertyField(cardFireballSfxClip);
+        EditorGUILayout.PropertyField(cardEffectSfxClip);
 
         showAudioPaths = EditorGUILayout.Foldout(showAudioPaths, "Sound File Paths", true);
         if (showAudioPaths)
         {
             EditorGUI.indentLevel++;
             EditorGUILayout.PropertyField(cardSummonSfxPath);
-            EditorGUILayout.PropertyField(cardFireballSfxPath);
+            EditorGUILayout.PropertyField(cardEffectSfxPath);
             EditorGUI.indentLevel--;
         }
+
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Spell / Rule Effect", EditorStyles.miniBoldLabel);
+        EditorGUILayout.PropertyField(cardEffectType);
+        EditorGUILayout.PropertyField(cardEffectTarget);
+        EditorGUILayout.PropertyField(cardEffectAmount);
+        EditorGUILayout.PropertyField(cardEffectDurationTurns);
+        EditorGUILayout.PropertyField(cardEffectManaCost);
 
         EditorGUILayout.Space(8);
     }

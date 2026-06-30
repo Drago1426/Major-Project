@@ -36,9 +36,16 @@ public class DeckBuilderManager : MonoBehaviour
     [SerializeField] AudioClip cardSummonSfxClip;
     [Tooltip("Optional absolute file path or Resources path for this card's summon sound.")]
     [SerializeField] string cardSummonSfxPath = "";
-    [SerializeField] AudioClip cardFireballSfxClip;
-    [Tooltip("Optional absolute file path or Resources path for this card's interaction fireball sound.")]
-    [SerializeField] string cardFireballSfxPath = "";
+    [SerializeField] AudioClip cardEffectSfxClip;
+    [Tooltip("Optional absolute file path or Resources path for this card's spell/effect sound.")]
+    [SerializeField] string cardEffectSfxPath = "";
+
+    [Header("Spell / Rule Effect")]
+    [SerializeField] CardEffectType cardEffectType = CardEffectType.None;
+    [SerializeField] CardEffectTarget cardEffectTarget = CardEffectTarget.None;
+    [SerializeField] int cardEffectAmount = 0;
+    [SerializeField] int cardEffectDurationTurns = 0;
+    [SerializeField] int cardEffectManaCost = 0;
 
     [Header("Only used for Creature / Pokemon cards")]
     [SerializeField] int health = 0;
@@ -118,9 +125,9 @@ public class DeckBuilderManager : MonoBehaviour
         cardSummonSfxPath = soundPath;
     }
 
-    public void SetCardFireballSfxPath(string soundPath)
+    public void SetCardEffectSfxPath(string soundPath)
     {
-        cardFireballSfxPath = soundPath;
+        cardEffectSfxPath = soundPath;
     }
 
     public void SetCardSummonSfxClip(AudioClip clip)
@@ -128,9 +135,18 @@ public class DeckBuilderManager : MonoBehaviour
         cardSummonSfxClip = clip;
     }
 
-    public void SetCardFireballSfxClip(AudioClip clip)
+    public void SetCardEffectSfxClip(AudioClip clip)
     {
-        cardFireballSfxClip = clip;
+        cardEffectSfxClip = clip;
+    }
+
+    public void SetCardEffect(CardEffectType effectType, CardEffectTarget effectTarget, int amount, int durationTurns, int manaCost)
+    {
+        cardEffectType = effectType;
+        cardEffectTarget = effectTarget;
+        cardEffectAmount = Mathf.Max(0, amount);
+        cardEffectDurationTurns = Mathf.Max(0, durationTurns);
+        cardEffectManaCost = Mathf.Max(0, manaCost);
     }
 
     public void SetMtgCardType(int cardTypeIndex)
@@ -188,7 +204,7 @@ public class DeckBuilderManager : MonoBehaviour
 
         string resolvedModelResourcePath = ResolveModelResourcePathForCurrentCard();
         string resolvedSummonSfxPath = ResolveAudioPathForCurrentCard(cardSummonSfxClip, cardSummonSfxPath, cardName, "summon");
-        string resolvedFireballSfxPath = ResolveAudioPathForCurrentCard(cardFireballSfxClip, cardFireballSfxPath, cardName, "fireball");
+        string resolvedEffectSfxPath = ResolveAudioPathForCurrentCard(cardEffectSfxClip, cardEffectSfxPath, cardName, "effect");
         var card = new DeckCardEntry
         {
             cardName = cardName.Trim(),
@@ -203,7 +219,12 @@ public class DeckBuilderManager : MonoBehaviour
             modelScale = SafeModelScale(cardModelScale),
             modelTint = SafeModelTint(cardModelTint),
             summonSfxPath = resolvedSummonSfxPath,
-            fireballSfxPath = resolvedFireballSfxPath
+            effectType = cardEffectType,
+            effectTarget = cardEffectTarget,
+            effectAmount = Mathf.Max(0, cardEffectAmount),
+            effectDurationTurns = Mathf.Max(0, cardEffectDurationTurns),
+            effectManaCost = Mathf.Max(0, cardEffectManaCost),
+            effectSfxPath = resolvedEffectSfxPath
         };
 
         if (card.NeedsCombatStats(selectedGameType) && (health <= 0 || damage <= 0 || mana < 0))

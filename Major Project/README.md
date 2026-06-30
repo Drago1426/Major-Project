@@ -2,7 +2,7 @@
 
 This project is an interactive AR card deck builder made in Unity. It lets users create or edit a deck, assign card images, stats, 3D models, sound effects, and then scan printed cards to spawn and interact with 3D creatures.
 
-The project uses Vuforia for image tracking. In other words, the card image becomes the marker that Vuforia recognizes through the camera. Once a card is detected, the Unity scripts handle the creature summon, fire tornado particles, stats display, sound effects, and card-based interactions such as the Fireball card.
+The project uses Vuforia for image tracking. In other words, the card image becomes the marker that Vuforia recognizes through the camera. Once a card is detected, the Unity scripts handle the creature summon, fire tornado particles, stats display, sound effects, and card-based rule data for future interactions.
 
 ## Main Features
 
@@ -13,7 +13,7 @@ The project uses Vuforia for image tracking. In other words, the card image beco
 - Fire tornado summon effect.
 - Creature stats displayed above models.
 - Per-card sound effects.
-- Fireball ability card support.
+- Spell/rule card support.
 - Unity Game view mouse interaction for testing.
 - Phone-as-camera testing through iVCam.
 
@@ -86,10 +86,10 @@ Assets/Scenes/Card Detection Test.unity
 7. Press **Load** to load the deck as runtime Vuforia image targets.
 8. Point the phone camera at a printed card.
 9. When Vuforia detects the card, the assigned 3D model should appear.
-10. Scan the Fireball card to arm the visible model.
-11. Click the model in the Unity Game view to fire the fireball effect.
+10. Click the model in the Unity Game view to test its configured interaction feedback.
+11. Use spell cards in the deck builder to define future gameplay rules such as attacks, buffs, healing, mana gain, draw effects, and shields.
 
-The 3D model should stay visible after looking away from the card, so you can scan an ability card and then interact with the creature.
+The 3D model should stay visible after looking away from the card, so you can continue inspecting and interacting with the spawned creature.
 
 If the deck was edited while the game is running, press **Reload** on the Deck Runtime Image Target Loader so Vuforia clears the old runtime targets and loads the updated deck.
 
@@ -131,7 +131,7 @@ The deck builder lets you configure cards with:
 - Creature stats.
 - 3D model prefab or resource path.
 - Summon sound effect.
-- Fireball sound effect.
+- Optional effect sound data for spell/rule cards.
 
 The runtime image target loader can load, reload, clear, and print runtime deck targets from the inspector.
 
@@ -147,7 +147,7 @@ The deck is created through the **Deck Builder Manager** in the Unity Inspector.
 6. Assign the card image. This is the image that must be printed and scanned.
 7. If the card is a creature, fill in its health, damage, and mana values.
 8. In **Model And Target**, assign a model prefab or enter a Resources path for the model.
-9. In **Sounds**, assign optional summon and fireball sound effects.
+9. In **Sounds**, assign optional summon and effect sound data.
 10. Press **Add Card** to add the card to the working deck.
 11. Repeat the process for every card you want in the deck.
 12. Press **Save Deck**.
@@ -175,13 +175,13 @@ Use these buttons while testing:
 
 The **Load** and **Reload** buttons should be used in Play Mode because Vuforia needs to be initialized before runtime image targets can be created.
 
-## Creature Cards And Ability Cards
+## Creature Cards And Spell Rules
 
 Creature cards are cards that spawn 3D models. These should have a card image and a model assigned.
 
-The Fireball card works differently. It is an ability card. When the Fireball card is scanned, it arms the currently visible creature instead of spawning a new model. The creature should glow yellow. The next click on the creature fires the fireball animation and sound effect, then disables the ability until the Fireball card is scanned again.
+Spell cards are used to define rule data. The current rule fields support effects such as attack, damage buff, health buff, healing, mana gain, card draw, and shield. Each spell can also store a target type, amount, duration, mana cost, and optional effect sound path.
 
-For the Fireball card, make sure the card name contains `Fireball`, or configure it as a spell/ability card with a fireball sound effect.
+The current prototype saves this spell/rule data as part of the deck. A full turn-based battle system can be built on top of these fields later.
 
 ## Printing Cards
 
@@ -217,13 +217,13 @@ If the 3D model does not appear:
 - Check that the model is inside a Resources folder if it is loaded through a resource path.
 - Check the Unity Console for missing prefab, image, or Vuforia errors.
 
-If the Fireball card does not work:
+If a spell/rule card is not configured correctly:
 
-- Make sure a creature card has already been scanned.
-- Make sure the creature is visible.
-- Scan the Fireball card.
-- The creature should glow yellow.
-- Click the creature in the Game view to fire.
+- Make sure the card type is set to `Spell`.
+- Make sure the effect type is not `None`.
+- Make sure the effect target is set.
+- Add an effect amount for rules that need a number, such as attack, buff, heal, mana, draw, or shield.
+- Save the deck again before loading or reloading it at runtime.
 
 ## Current Status
 

@@ -5130,9 +5130,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CreatureCombat
   muzzle: {fileID: 5780495472550238706}
   glowRing: {fileID: 2718685114075464254}
-  fireballPrefab: {fileID: 7720294155475978813, guid: 3336d880f20f64b4db60b4242791d115, type: 3}
-  fireballSpeed: 1.5
-  fireballLife: 2
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 1.5
+  projectileLife: 2
   canAttack: 0
   attackCooldown: 1
 --- !u!1 &5176732287572946478

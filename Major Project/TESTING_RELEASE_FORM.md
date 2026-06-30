@@ -19,7 +19,7 @@ During the test session, you may be asked to:
 - Load or reload runtime image targets.
 - Scan printed cards using the camera setup.
 - Observe 3D models, stats, sound effects, and particle animations.
-- Interact with the 3D model, including testing the Fireball card interaction.
+- Interact with the 3D model and test spell/rule card behavior where available.
 - Give verbal or written feedback about what worked, what was confusing, and what could be improved.
 
 Testing should take around **15-30 minutes**, unless you choose to spend longer.
@@ -107,4 +107,3 @@ __________________________________________________________________
 __________________________________________________________________
 
 __________________________________________________________________
-
