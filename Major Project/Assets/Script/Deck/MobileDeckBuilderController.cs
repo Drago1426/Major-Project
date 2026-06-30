@@ -19,6 +19,14 @@ public class BuiltInSoundOption
     public string resourcesPath;
 }
 
+public enum MobileDeckCardType
+{
+    Summoner,
+    Creature,
+    Spell,
+    Land
+}
+
 public class MobileDeckBuilderController : MonoBehaviour
 {
     static readonly DeckData[] EmptyDecks = Array.Empty<DeckData>();
@@ -33,17 +41,14 @@ public class MobileDeckBuilderController : MonoBehaviour
 
     [Header("Built-in Sounds")]
     [SerializeField] List<BuiltInSoundOption> builtInSummonSounds = new();
-    [SerializeField] List<BuiltInSoundOption> builtInFireballSounds = new();
 
     [Header("Current Deck")]
     [SerializeField] string deckName = "My Mobile Deck";
-    [SerializeField] CardGameType selectedGameType = CardGameType.MTG;
 
     [Header("Current Card")]
     [SerializeField] string cardName = "";
     [SerializeField] int quantity = 1;
-    [SerializeField] MtgCardType mtgCardType = MtgCardType.Creature;
-    [SerializeField] PokemonCardType pokemonCardType = PokemonCardType.Pokemon;
+    [SerializeField] MobileDeckCardType selectedCardType = MobileDeckCardType.Summoner;
     [SerializeField] int health;
     [SerializeField] int damage;
     [SerializeField] int mana;
@@ -56,7 +61,6 @@ public class MobileDeckBuilderController : MonoBehaviour
     [SerializeField] string selectedModelResourcePath = "";
     [SerializeField] string selectedCustomModelPath = "";
     [SerializeField] string selectedSummonSfxPath = "";
-    [SerializeField] string selectedFireballSfxPath = "";
 
     [Header("Working Deck")]
     [SerializeField] List<DeckCardEntry> workingCards = new();
@@ -64,7 +68,6 @@ public class MobileDeckBuilderController : MonoBehaviour
 
     public IReadOnlyList<BuiltInModelOption> BuiltInModels => builtInModels;
     public IReadOnlyList<BuiltInSoundOption> BuiltInSummonSounds => builtInSummonSounds;
-    public IReadOnlyList<BuiltInSoundOption> BuiltInFireballSounds => builtInFireballSounds;
     public IReadOnlyList<DeckCardEntry> WorkingCards => workingCards;
     public IReadOnlyList<DeckData> SavedDecks => deckDatabase != null ? deckDatabase.SavedDecks : EmptyDecks;
     public string StatusMessage => statusMessage;
@@ -72,7 +75,7 @@ public class MobileDeckBuilderController : MonoBehaviour
     public string SelectedModelResourcePath => selectedModelResourcePath;
     public string SelectedCustomModelPath => selectedCustomModelPath;
     public string SelectedSummonSfxPath => selectedSummonSfxPath;
-    public string SelectedFireballSfxPath => selectedFireballSfxPath;
+    public bool CurrentCardNeedsStats => selectedCardType == MobileDeckCardType.Creature;
 
     void Awake()
     {
@@ -86,11 +89,6 @@ public class MobileDeckBuilderController : MonoBehaviour
     public void SetDeckName(string newDeckName)
     {
         deckName = newDeckName;
-    }
-
-    public void SetGameType(int gameTypeIndex)
-    {
-        selectedGameType = (CardGameType)Mathf.Clamp(gameTypeIndex, 0, Enum.GetValues(typeof(CardGameType)).Length - 1);
     }
 
     public void SetCardName(string newCardName)
@@ -108,14 +106,10 @@ public class MobileDeckBuilderController : MonoBehaviour
         SetQuantity(ParseInt(value, quantity));
     }
 
-    public void SetMtgCardType(int cardTypeIndex)
+    public void SetCardType(int cardTypeIndex)
     {
-        mtgCardType = (MtgCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(MtgCardType)).Length - 1);
-    }
-
-    public void SetPokemonCardType(int cardTypeIndex)
-    {
-        pokemonCardType = (PokemonCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(PokemonCardType)).Length - 1);
+        selectedCardType = (MobileDeckCardType)Mathf.Clamp(cardTypeIndex, 0, Enum.GetValues(typeof(MobileDeckCardType)).Length - 1);
+        SetStatus($"Card type set to {selectedCardType}.");
     }
 
     public void SetHealthFromText(string value)
@@ -209,18 +203,6 @@ public class MobileDeckBuilderController : MonoBehaviour
         SetStatus($"Selected summon sound: {builtInSummonSounds[optionIndex].displayName}");
     }
 
-    public void SelectBuiltInFireballSound(int optionIndex)
-    {
-        if (!IsValidIndex(optionIndex, builtInFireballSounds))
-        {
-            SetStatus("Selected fireball sound does not exist.", true);
-            return;
-        }
-
-        selectedFireballSfxPath = builtInFireballSounds[optionIndex].resourcesPath?.Trim() ?? string.Empty;
-        SetStatus($"Selected fireball sound: {builtInFireballSounds[optionIndex].displayName}");
-    }
-
     public void UseImageFilePath(string sourcePath)
     {
         if (RuntimeDeckAssetStore.TryCopyImageFile(sourcePath, CurrentCardFileStem(), out string storedPath, out string error))
@@ -270,18 +252,6 @@ public class MobileDeckBuilderController : MonoBehaviour
         SetStatus(error, true);
     }
 
-    public void UseFireballAudioFilePath(string sourcePath)
-    {
-        if (RuntimeDeckAssetStore.TryCopyAudioFile(sourcePath, CurrentCardFileStem(), "fireball", out string storedPath, out string error))
-        {
-            selectedFireballSfxPath = storedPath;
-            SetStatus("Fireball sound selected.");
-            return;
-        }
-
-        SetStatus(error, true);
-    }
-
     public void PickImageFromGallery()
     {
         if (!MobileNativeAssetPicker.TryPickImageFromGallery(UseImageFilePath, out string error))
@@ -297,12 +267,6 @@ public class MobileDeckBuilderController : MonoBehaviour
     public void PickSummonAudioFile()
     {
         if (!MobileNativeAssetPicker.TryPickAudioFile(UseSummonAudioFilePath, out string error))
-            SetStatus(error, true);
-    }
-
-    public void PickFireballAudioFile()
-    {
-        if (!MobileNativeAssetPicker.TryPickAudioFile(UseFireballAudioFilePath, out string error))
             SetStatus(error, true);
     }
 
@@ -327,15 +291,6 @@ public class MobileDeckBuilderController : MonoBehaviour
         {
             selectedSummonSfxPath = path;
             SetStatus("Downloaded summon sound.");
-        }, error => SetStatus(error, true)));
-    }
-
-    public void DownloadFireballAudioFromUrl(string url)
-    {
-        StartCoroutine(RuntimeDeckAssetStore.DownloadFireballAudio(url, CurrentCardFileStem(), path =>
-        {
-            selectedFireballSfxPath = path;
-            SetStatus("Downloaded fireball sound.");
         }, error => SetStatus(error, true)));
     }
 
@@ -367,7 +322,7 @@ public class MobileDeckBuilderController : MonoBehaviour
         {
             cardName = cardName.Trim(),
             quantity = Mathf.Max(1, quantity),
-            cardType = CurrentSelectedCardType(),
+            cardType = selectedCardType.ToString(),
             health = health,
             damage = damage,
             mana = mana,
@@ -378,20 +333,20 @@ public class MobileDeckBuilderController : MonoBehaviour
             modelScale = SafeModelScale(modelScale),
             modelTint = SafeModelTint(modelTint),
             summonSfxPath = selectedSummonSfxPath,
-            fireballSfxPath = selectedFireballSfxPath
+            fireballSfxPath = string.Empty
         };
 
-        if (card.NeedsCombatStats(selectedGameType))
+        if (selectedCardType == MobileDeckCardType.Creature)
         {
             if (health <= 0 || damage <= 0)
             {
-                SetStatus("Creature / Pokemon cards need health and damage values above 0.", true);
+                SetStatus("Creature cards need health and damage values above 0.", true);
                 return false;
             }
 
             if (!card.HasModelResourcePath() && !card.HasCustomModelPath())
             {
-                SetStatus("Creature / Pokemon cards need a built-in model or custom OBJ model.", true);
+                SetStatus("Creature cards need a built-in model or custom OBJ model.", true);
                 return false;
             }
         }
@@ -430,9 +385,9 @@ public class MobileDeckBuilderController : MonoBehaviour
 
         var deck = new DeckData
         {
-            deckId = BuildDeckId(deckName, selectedGameType),
+            deckId = BuildDeckId(deckName, CardGameType.MTG),
             deckName = deckName.Trim(),
-            gameType = selectedGameType,
+            gameType = CardGameType.MTG,
             cards = new List<DeckCardEntry>(workingCards)
         };
 
@@ -466,7 +421,6 @@ public class MobileDeckBuilderController : MonoBehaviour
         }
 
         deckName = deck.deckName;
-        selectedGameType = deck.gameType;
         workingCards = CloneCards(deck.cards);
         SetStatus($"Loaded deck '{deck.deckName}' for editing.");
     }
@@ -547,6 +501,7 @@ public class MobileDeckBuilderController : MonoBehaviour
     {
         cardName = string.Empty;
         quantity = 1;
+        selectedCardType = MobileDeckCardType.Summoner;
         health = 0;
         damage = 0;
         mana = 0;
@@ -557,15 +512,6 @@ public class MobileDeckBuilderController : MonoBehaviour
         selectedModelResourcePath = string.Empty;
         selectedCustomModelPath = string.Empty;
         selectedSummonSfxPath = string.Empty;
-        selectedFireballSfxPath = string.Empty;
-    }
-
-    string CurrentSelectedCardType()
-    {
-        if (selectedGameType == CardGameType.MTG)
-            return mtgCardType.ToString();
-
-        return pokemonCardType.ToString();
     }
 
     string CurrentCardFileStem()
@@ -603,11 +549,6 @@ public class MobileDeckBuilderController : MonoBehaviour
             builtInSummonSounds.Add(new BuiltInSoundOption { displayName = "Siren", resourcesPath = "Effects/Sound/sirenSound" });
         }
 
-        if (builtInFireballSounds.Count == 0)
-        {
-            builtInFireballSounds.Add(new BuiltInSoundOption { displayName = "Fireball", resourcesPath = "Effects/Sound/fireBall" });
-            builtInFireballSounds.Add(new BuiltInSoundOption { displayName = "Club Swing", resourcesPath = "Effects/Sound/clubSwing" });
-        }
     }
 
     List<DeckCardEntry> CloneCards(List<DeckCardEntry> sourceCards)

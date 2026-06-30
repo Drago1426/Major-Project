@@ -18,6 +18,7 @@ public class MobileDeckBuilderScreen : MonoBehaviour
     GameObject menuPanel;
     GameObject deckPickerPanel;
     GameObject settingsPanel;
+    GameObject creatureStatsGroup;
     Text statusText;
     Font uiFont;
 
@@ -82,38 +83,35 @@ public class MobileDeckBuilderScreen : MonoBehaviour
 
     void BuildDeckSection(Transform parent)
     {
-        AddTitle(parent, "AR Card Deck Builder");
-        AddInput(parent, "Deck Name", "My Mobile Deck", controller.SetDeckName);
-        AddDropdown(parent, "Game", new List<string> { "MTG", "Pokemon TCG" }, controller.SetGameType);
+        AddTitle(parent, "Create Deck");
+        AddInput(parent, "Deck Name", "My Deck", controller.SetDeckName);
     }
 
     void BuildCardSection(Transform parent)
     {
-        AddSection(parent, "Card");
-        AddInput(parent, "Card Name", "Cinder", controller.SetCardName);
+        AddSection(parent, "Card Details");
+        AddDropdown(parent, "Card Type", EnumNames<MobileDeckCardType>(), index =>
+        {
+            controller.SetCardType(index);
+            UpdateCreatureStatsVisibility();
+        });
+        AddInput(parent, "Card Name", "Card name", controller.SetCardName);
         AddInput(parent, "Quantity", "1", controller.SetQuantityFromText, InputField.ContentType.IntegerNumber);
 
-        AddDropdown(parent, "MTG Type", EnumNames<MtgCardType>(), controller.SetMtgCardType);
-        AddDropdown(parent, "Pokemon Type", EnumNames<PokemonCardType>(), controller.SetPokemonCardType);
-
-        AddInput(parent, "Health", "5", controller.SetHealthFromText, InputField.ContentType.IntegerNumber);
-        AddInput(parent, "Damage", "5", controller.SetDamageFromText, InputField.ContentType.IntegerNumber);
-        AddInput(parent, "Mana", "2", controller.SetManaFromText, InputField.ContentType.IntegerNumber);
-        AddInput(parent, "Target Width (m)", "0.06", controller.SetTargetWidthFromText, InputField.ContentType.DecimalNumber);
+        creatureStatsGroup = CreateVerticalGroup("Creature Stats Group", parent, 12f);
+        AddSection(creatureStatsGroup.transform, "Creature Stats");
+        AddInput(creatureStatsGroup.transform, "Health", "5", controller.SetHealthFromText, InputField.ContentType.IntegerNumber);
+        AddInput(creatureStatsGroup.transform, "Damage", "5", controller.SetDamageFromText, InputField.ContentType.IntegerNumber);
+        AddInput(creatureStatsGroup.transform, "Mana", "2", controller.SetManaFromText, InputField.ContentType.IntegerNumber);
+        UpdateCreatureStatsVisibility();
     }
 
     void BuildImageSection(Transform parent)
     {
-        AddSection(parent, "Card Image Target");
+        AddSection(parent, "Card Image");
         AddButtonRow(parent,
-            ("Gallery", () => Run(controller.PickImageFromGallery)),
-            ("Camera", () => Run(controller.TakePhotoForImageTarget)));
-
-        InputField imagePath = AddInput(parent, "Image File Path", "", null);
-        AddButton(parent, "Use Image Path", () => Run(() => controller.UseImageFilePath(imagePath.text)));
-
-        InputField imageUrl = AddInput(parent, "Image URL", "https://...", null, InputField.ContentType.Standard);
-        AddButton(parent, "Download Image", () => Run(() => controller.DownloadImageFromUrl(imageUrl.text)));
+            ("Choose From Gallery", () => Run(controller.PickImageFromGallery)),
+            ("Take Photo", () => Run(controller.TakePhotoForImageTarget)));
     }
 
     void BuildModelSection(Transform parent)
@@ -123,15 +121,9 @@ public class MobileDeckBuilderScreen : MonoBehaviour
         if (controller.BuiltInModels.Count > 0)
             controller.SelectBuiltInModel(0);
 
+        AddButton(parent, "Pick Local OBJ Model", () => Run(controller.PickCustomModelFile));
         AddInput(parent, "Uniform Scale", "1", controller.SetUniformModelScaleFromText, InputField.ContentType.DecimalNumber);
-        AddInput(parent, "Tint Hex", "#FFFFFF", controller.SetModelTintFromHtml);
-
-        InputField modelPath = AddInput(parent, "Custom OBJ Path", "", null);
-        AddButton(parent, "Use OBJ Path", () => Run(() => controller.UseCustomModelFilePath(modelPath.text)));
-        AddButton(parent, "Pick OBJ File", () => Run(controller.PickCustomModelFile));
-
-        InputField modelUrl = AddInput(parent, "OBJ URL", "https://...", null);
-        AddButton(parent, "Download OBJ", () => Run(() => controller.DownloadModelFromUrl(modelUrl.text)));
+        AddInput(parent, "Model Colour", "#FFFFFF", controller.SetModelTintFromHtml);
     }
 
     void BuildAudioSection(Transform parent)
@@ -141,25 +133,8 @@ public class MobileDeckBuilderScreen : MonoBehaviour
         if (controller.BuiltInSummonSounds.Count > 0)
             controller.SelectBuiltInSummonSound(0);
 
-        InputField summonPath = AddInput(parent, "Summon Audio Path", "", null);
-        AddButtonRow(parent,
-            ("Pick Summon Audio", () => Run(controller.PickSummonAudioFile)),
-            ("Use Summon Path", () => Run(() => controller.UseSummonAudioFilePath(summonPath.text))));
+        AddButton(parent, "Pick Local Summon Sound", () => Run(controller.PickSummonAudioFile));
 
-        InputField summonUrl = AddInput(parent, "Summon Audio URL", "https://...", null);
-        AddButton(parent, "Download Summon Audio", () => Run(() => controller.DownloadSummonAudioFromUrl(summonUrl.text)));
-
-        AddDropdown(parent, "Fireball Sound", SoundOptionNames(controller.BuiltInFireballSounds), index => Run(() => controller.SelectBuiltInFireballSound(index)));
-        if (controller.BuiltInFireballSounds.Count > 0)
-            controller.SelectBuiltInFireballSound(0);
-
-        InputField fireballPath = AddInput(parent, "Fireball Audio Path", "", null);
-        AddButtonRow(parent,
-            ("Pick Fireball Audio", () => Run(controller.PickFireballAudioFile)),
-            ("Use Fireball Path", () => Run(() => controller.UseFireballAudioFilePath(fireballPath.text))));
-
-        InputField fireballUrl = AddInput(parent, "Fireball Audio URL", "https://...", null);
-        AddButton(parent, "Download Fireball Audio", () => Run(() => controller.DownloadFireballAudioFromUrl(fireballUrl.text)));
     }
 
     void BuildActions(Transform parent)
@@ -311,7 +286,14 @@ public class MobileDeckBuilderScreen : MonoBehaviour
     void Run(Action action)
     {
         action?.Invoke();
+        UpdateCreatureStatsVisibility();
         UpdateStatus();
+    }
+
+    void UpdateCreatureStatsVisibility()
+    {
+        if (creatureStatsGroup != null)
+            creatureStatsGroup.SetActive(controller != null && controller.CurrentCardNeedsStats);
     }
 
     void UpdateStatus()
@@ -643,6 +625,24 @@ public class MobileDeckBuilderScreen : MonoBehaviour
         return row;
     }
 
+    GameObject CreateVerticalGroup(string name, Transform parent, float spacing)
+    {
+        var group = CreateUiObject(name, parent);
+        SetLayoutSize(group, 0f, -1f, -1f);
+
+        var layout = group.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = spacing;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+
+        var fitter = group.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        return group;
+    }
+
     Text AddText(Transform parent, string text, int size, FontStyle style, TextAnchor alignment, Vector2? fixedSize = null)
     {
         var textObject = CreateUiObject($"{text} Text", parent);
@@ -673,7 +673,8 @@ public class MobileDeckBuilderScreen : MonoBehaviour
             layoutElement = target.AddComponent<LayoutElement>();
 
         layoutElement.minHeight = minHeight;
-        layoutElement.preferredHeight = preferredHeight;
+        if (preferredHeight >= 0f)
+            layoutElement.preferredHeight = preferredHeight;
 
         if (preferredWidth > 0f)
             layoutElement.preferredWidth = preferredWidth;

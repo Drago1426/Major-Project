@@ -68,6 +68,16 @@ public class DeckCardEntry
 
     public bool NeedsCombatStats(CardGameType gameType)
     {
+        if (string.Equals(cardType, "Creature", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (string.Equals(cardType, "Summoner", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(cardType, "Spell", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(cardType, "Land", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         if (gameType == CardGameType.MTG)
             return string.Equals(cardType, MtgCardType.Creature.ToString(), StringComparison.OrdinalIgnoreCase);
 
