@@ -1,30 +1,35 @@
 # AR Card Deck Builder
 
-This project is an interactive AR card deck builder made in Unity. It lets users create or edit a deck, assign card images, stats, 3D models, sound effects, and then scan printed cards to spawn and interact with 3D creatures.
+This project is an interactive AR card deck builder and testing tool made in Unity. It lets users create and edit custom card decks, assign card images, 3D models, stats, sound effects, and spell rule data, then scan printed cards through Vuforia to spawn AR creatures.
 
-The project uses Vuforia for image tracking. In other words, the card image becomes the marker that Vuforia recognizes through the camera. Once a card is detected, the Unity scripts handle the creature summon, fire tornado particles, stats display, sound effects, and card-based interactions such as the Fireball card.
+The project is currently focused on Unity Editor testing rather than being a finished standalone mobile app. It works as a prototype tool for building AR card decks, testing runtime image targets, and preparing the structure for a future AR card game.
 
 ## Main Features
 
-- Runtime deck creation and editing.
-- Custom card images for scanning.
-- Runtime Vuforia image targets.
-- 3D creature spawning from scanned cards.
+- Unity Editor deck builder tool.
+- Saved deck creation and editing.
+- Four card categories: `Summoner`, `Creature`, `Spell`, and `Land`.
+- Custom card images for Vuforia scanning.
+- Runtime Vuforia image target loading.
+- Saved deck selection during Play Mode.
+- 3D model assignment, scaling, and colour tinting.
 - Fire tornado summon effect.
-- Creature stats displayed above models.
-- Per-card sound effects.
-- Fireball ability card support.
-- Unity Game view mouse interaction for testing.
+- Creature stats displayed above spawned models.
+- Summon sound effects.
+- Spell-only effect sound and effect path fields.
+- Spell/rule data for attacks, buffs, healing, mana gain, card draw, and shields.
+- Runtime loader buttons for loading, reloading, clearing, and printing loaded targets.
+- Unity Game view interaction for testing.
 - Phone-as-camera testing through iVCam.
 
 ## Requirements
 
 - Unity `6000.3.1f1`.
 - A Windows PC capable of running Unity.
-- A phone to use as the camera.
-- iVCam installed on both the PC and the phone.
 - Vuforia Engine.
-- Printed card images for physical scanning.
+- A Vuforia license key if Vuforia asks for one.
+- Printed card images for physical AR scanning.
+- Optional: a phone and iVCam for phone-as-camera testing.
 
 ## Vuforia Notes
 
@@ -40,7 +45,7 @@ If Vuforia asks for a license key, create or use a Vuforia developer license key
 
 ## iVCam Setup
 
-iVCam is used so your phone can act as the camera inside Unity while testing.
+iVCam is used so a phone can act as the camera inside Unity while testing.
 
 1. Install the iVCam PC client on your computer.
 2. Install the iVCam mobile app on your phone.
@@ -48,7 +53,7 @@ iVCam is used so your phone can act as the camera inside Unity while testing.
 4. Open iVCam on both the phone and the PC.
 5. Make sure the phone camera feed appears in the iVCam PC client.
 6. Open the Unity project.
-7. If Unity/Vuforia does not automatically use the iVCam camera, select or configure the iVCam webcam device in the Vuforia/AR camera settings.
+7. If Unity or Vuforia does not automatically use the iVCam camera, select or configure the iVCam webcam device in the Vuforia/AR camera settings.
 
 Once iVCam is connected, pressing Play in Unity should use the phone camera feed as the AR camera input.
 
@@ -72,28 +77,175 @@ Assets/Scenes/Card Detection Test.unity
 ```
 
 8. Check that Vuforia loads correctly.
-9. Connect iVCam.
-10. Press Play.
+9. Connect iVCam if using a phone as the camera.
+10. Press Play to test AR scanning.
 
-## How To Use
+## Main Scene
+
+The main scene currently used for deck building and AR testing is:
+
+```text
+Assets/Scenes/Card Detection Test.unity
+```
+
+Other scenes may exist in the project, but `Card Detection Test` is the main card scanning and deck testing scene.
+
+## Deck Builder Tool
+
+The project can be used through the custom editor window:
+
+```text
+Tools > AR Deck Builder
+```
+
+It can also be used through the **Deck Builder Manager** component in the inspector.
+
+The tool lets users configure:
+
+- Deck name.
+- Existing saved deck to edit.
+- Card name.
+- Card type.
+- Quantity.
+- Card image.
+- Target width.
+- Creature stats.
+- 3D model prefab or Resources path.
+- Runtime OBJ path.
+- Model scale.
+- Model tint.
+- Summon sound.
+- Spell effect type.
+- Spell effect target.
+- Spell effect amount.
+- Spell effect duration.
+- Spell mana cost.
+- Spell effect sound.
+
+The **Deck Builder Manager** now automatically tries to find the **Deck Runtime Image Target Loader** when the scene loads, when scripts reload, and when Play Mode stops. If the reference is still missing, use **Auto Fill Scene References** in the AR Deck Builder window or assign the loader manually.
+
+## Card Types
+
+The project uses four general card categories:
+
+- `Summoner`: a flexible card type for custom deck ideas or future summoning rules.
+- `Creature`: a card that can spawn a 3D creature model and display health, damage, and mana.
+- `Spell`: a card that stores rule/effect data such as attack, buff, heal, mana gain, draw, or shield.
+- `Land`: a flexible support card type for future resource or board rules.
+
+The old MTG and Pokemon preset system has been removed. The project now uses these neutral card categories instead.
+
+## Building A Deck
+
+1. Open `Assets/Scenes/Card Detection Test.unity`.
+2. Open **Tools > AR Deck Builder**.
+3. Check that the **Deck Builder** field has found the scene's Deck Builder Manager.
+4. In **Deck Setup**, enter the deck name.
+5. In **Card Creator**, enter the card name and quantity.
+6. Choose the card type: `Summoner`, `Creature`, `Spell`, or `Land`.
+7. Assign the card image. This is the image that must be printed and scanned.
+8. If the card is a creature, enter health, damage, mana, and assign a model.
+9. If the card is a spell, enter the spell/rule effect data. Effect sound and effect path only appear for spell cards.
+10. Assign optional model scale, model tint, and summon sound.
+11. Press **Add Card To Working Deck**.
+12. Repeat the process for every card in the deck.
+13. Press **Save Deck**.
+
+Saved decks are stored in the deck database/persistent save data and can be loaded again for editing.
+
+## Editing An Existing Deck
+
+1. Open **Tools > AR Deck Builder** or select the **Deck Builder Manager** component.
+2. In the saved deck section, press **Refresh Saved Decks** if the list is empty or outdated.
+3. Choose the deck from the saved deck dropdown.
+4. Press **Load Selected For Editing**.
+5. The deck's cards will appear in the working deck list.
+6. Add, remove, or change cards in the working deck.
+7. Press **Save Deck** to update the same deck.
+
+Use **New Deck** when you want to clear the current editing state and start a separate deck.
+
+## Loading A Runtime Deck
+
+The **Deck Runtime Image Target Loader** is the component that turns saved deck cards into runtime Vuforia image targets. A deck can exist in the deck builder, but Vuforia will not scan those cards until the runtime targets are loaded.
+
+1. Press Play.
+2. Select the GameObject with the **Deck Runtime Image Target Loader** component.
+3. In **Deck Source**, choose a deck from the **Saved Deck** dropdown.
+4. Press **Refresh Saved Decks** if the deck list is empty or outdated.
+5. Check that **Deck Id To Load** updates automatically.
+6. Press **Load** under **Runtime Deck Actions**.
+7. Check the Unity Console. It should say how many runtime targets were created, skipped, or failed.
+8. Start scanning the printed cards.
+
+Use these buttons while testing:
+
+- **Load**: loads the selected deck into Vuforia.
+- **Reload**: clears the current runtime targets and loads the selected deck again.
+- **Clear Targets**: removes the runtime targets currently loaded from the deck.
+- **Print Loaded**: prints the loaded runtime target names to the Console.
+- **Clear Loaded Cache**: clears the loader's internal list of loaded target names.
+
+The **Load** and **Reload** buttons should be used in Play Mode because Vuforia needs to be initialized before runtime image targets can be created.
+
+## AR Scanning Workflow
 
 1. Print the cards you want to scan.
-2. Open `Card Detection Test`.
-3. Connect iVCam and make sure the phone camera feed is working.
-4. Press Play in Unity.
-5. Select the object that has the **Deck Runtime Image Target Loader** component.
-6. In the inspector, find **Runtime Deck Actions**.
-7. Press **Load** to load the deck as runtime Vuforia image targets.
-8. Point the phone camera at a printed card.
-9. When Vuforia detects the card, the assigned 3D model should appear.
-10. Scan the Fireball card to arm the visible model.
-11. Click the model in the Unity Game view to fire the fireball effect.
+2. Press Play in Unity.
+3. Select the runtime deck from the Deck Runtime Image Target Loader.
+4. Press **Load**.
+5. Point the camera at a printed card.
+6. When Vuforia detects the card, the assigned 3D model should appear.
+7. The model can appear with summon VFX, sound, model tint, and stats.
+8. Click the model in the Unity Game view to test its interaction feedback.
 
-The 3D model should stay visible after looking away from the card, so you can scan an ability card and then interact with the creature.
+The 3D model should stay visible after looking away from the card, so it can continue to be inspected and tested.
 
-If the deck was edited while the game is running, press **Reload** on the Deck Runtime Image Target Loader so Vuforia clears the old runtime targets and loads the updated deck.
+## Models And Sounds
 
-## Creating Custom Cards
+Creature cards should have a model assigned. The tool supports:
+
+- A model prefab inside a Unity `Resources` folder.
+- A Resources path typed manually.
+- A selected model copied into the imported Resources model folder.
+- A runtime OBJ path for imported models.
+
+Summon sounds can be assigned to cards. Spell cards can also have effect sounds. The effect sound and effect path fields are only shown when the selected card type is `Spell`.
+
+## Spell And Rule Data
+
+Spell cards currently store rule data. The supported effect types are:
+
+- `Attack`
+- `BuffDamage`
+- `BuffHealth`
+- `Heal`
+- `ManaGain`
+- `DrawCard`
+- `Shield`
+
+Each spell can also store:
+
+- Target type.
+- Effect amount.
+- Duration in turns.
+- Mana cost.
+- Effect sound path.
+
+This data is saved as part of the deck. The project does not yet include a full turn-based battle system, but these fields provide the foundation for one.
+
+## Generated Outputs
+
+The AR Deck Builder window can generate helper files:
+
+- **Export Deck JSON**: exports the current working deck as a JSON file.
+- **Generate Print Sheet**: creates a printable HTML sheet for the current deck's card images.
+- **Generate Deck Report**: creates a readable Markdown report of the deck.
+- **Reveal Generated Files Folder**: opens the generated output folder.
+
+These files are useful for testing, presenting, or printing cards.
+
+## Creating Custom Card Images
 
 This project is designed as a deck builder, so users can add their own card images and use the system however they want.
 
@@ -105,83 +257,9 @@ Custom card images can be used, but tracking quality depends on the image. The b
 - Unique shapes or artwork.
 - Minimal blank space.
 
-Images that are mostly plain colors, blurry, low contrast, or repeated patterns may not scan reliably.
+Images that are mostly plain colours, blurry, low contrast, or repeated patterns may not scan reliably.
 
-After adding a custom card image, print the card and scan it with the phone camera. The physical printed card should match the image used in the deck builder as closely as possible.
-
-## Project Scene
-
-The main scene currently used for testing is:
-
-```text
-Assets/Scenes/Card Detection Test.unity
-```
-
-Other scenes may exist in the project, but `Card Detection Test` is the active card scanning and deck testing scene.
-
-## Deck Builder Notes
-
-The deck builder lets you configure cards with:
-
-- Card name.
-- Card type.
-- Quantity.
-- Card image.
-- Target width.
-- Creature stats.
-- 3D model prefab or resource path.
-- Summon sound effect.
-- Fireball sound effect.
-
-The runtime image target loader can load, reload, clear, and print runtime deck targets from the inspector.
-
-## Building A Deck
-
-The deck is created through the **Deck Builder Manager** in the Unity Inspector.
-
-1. Open `Assets/Scenes/Card Detection Test.unity`.
-2. Select the GameObject that has the **Deck Builder Manager** component.
-3. In the **Deck** section, enter the deck name and choose the game type.
-4. In the **Card** section, enter the card name and quantity.
-5. Choose the card type. For example, use `Creature` for a creature card or `Spell` for a spell/ability card.
-6. Assign the card image. This is the image that must be printed and scanned.
-7. If the card is a creature, fill in its health, damage, and mana values.
-8. In **Model And Target**, assign a model prefab or enter a Resources path for the model.
-9. In **Sounds**, assign optional summon and fireball sound effects.
-10. Press **Add Card** to add the card to the working deck.
-11. Repeat the process for every card you want in the deck.
-12. Press **Save Deck**.
-
-After saving, enter Play Mode and use the **Deck Runtime Image Target Loader** to load the deck into Vuforia.
-
-## Loading The Runtime Deck
-
-The **Deck Runtime Image Target Loader** is the component that turns the saved deck cards into runtime Vuforia image targets. The deck may exist in the deck builder, but Vuforia will not scan those cards until the runtime targets are loaded.
-
-1. Press Play.
-2. Select the GameObject with the **Deck Runtime Image Target Loader** component.
-3. Check that **Deck Id To Load** matches the deck you want to test.
-4. Press **Load** under **Runtime Deck Actions**.
-5. Check the Unity Console. It should say how many runtime targets were created, skipped, or failed.
-6. Start scanning the printed cards.
-
-Use these buttons while testing:
-
-- **Load**: loads the selected deck into Vuforia.
-- **Reload**: clears the current runtime targets and loads the deck again. Use this after editing and saving a deck.
-- **Clear Targets**: removes the runtime targets currently loaded from the deck.
-- **Print Loaded**: prints the loaded runtime target names to the Console.
-- **Clear Loaded Cache**: clears the loader's internal list of loaded target names.
-
-The **Load** and **Reload** buttons should be used in Play Mode because Vuforia needs to be initialized before runtime image targets can be created.
-
-## Creature Cards And Ability Cards
-
-Creature cards are cards that spawn 3D models. These should have a card image and a model assigned.
-
-The Fireball card works differently. It is an ability card. When the Fireball card is scanned, it arms the currently visible creature instead of spawning a new model. The creature should glow yellow. The next click on the creature fires the fireball animation and sound effect, then disables the ability until the Fireball card is scanned again.
-
-For the Fireball card, make sure the card name contains `Fireball`, or configure it as a spell/ability card with a fireball sound effect.
+After adding a custom card image, print the card and scan it with the camera. The physical printed card should match the image used in the deck builder as closely as possible.
 
 ## Printing Cards
 
@@ -198,14 +276,22 @@ When printing cards:
 
 If the camera does not work:
 
-- Make sure iVCam is running on the PC and phone.
+- Make sure iVCam is running on the PC and phone if using iVCam.
 - Check that the phone and PC are connected.
 - Confirm that the iVCam feed appears in the iVCam PC app.
 - Check the Vuforia/AR camera settings in Unity.
 
+If saved decks do not appear:
+
+- Make sure a deck has been saved.
+- Press **Refresh Saved Decks**.
+- Check that the Deck Database reference is assigned.
+- Check the Unity Console for save/load errors.
+
 If cards are not detected:
 
 - Make sure Vuforia is installed and configured.
+- Make sure the runtime deck was loaded in Play Mode.
 - Make sure the card image is clear and high contrast.
 - Try better lighting.
 - Move the camera closer or farther from the printed card.
@@ -214,17 +300,21 @@ If cards are not detected:
 If the 3D model does not appear:
 
 - Check that the card has a model assigned.
-- Check that the model is inside a Resources folder if it is loaded through a resource path.
+- Check that the card type is correct.
+- Check that the model is inside a Resources folder if it is loaded through a Resources path.
+- Check that the runtime OBJ path still exists if using a custom model path.
 - Check the Unity Console for missing prefab, image, or Vuforia errors.
 
-If the Fireball card does not work:
+If a spell/rule card is not configured correctly:
 
-- Make sure a creature card has already been scanned.
-- Make sure the creature is visible.
-- Scan the Fireball card.
-- The creature should glow yellow.
-- Click the creature in the Game view to fire.
+- Make sure the card type is set to `Spell`.
+- Make sure the effect type is not `None`.
+- Make sure the effect target is set.
+- Add an effect amount for rules that need a number, such as attack, buff, heal, mana, draw, or shield.
+- Save the deck again before loading or reloading it at runtime.
 
 ## Current Status
 
-This is a prototype for an AR card game / runtime deck builder. It is currently focused on Unity Editor testing with iVCam, but the structure can later be expanded into a mobile app where users create decks, scan physical cards, and interact with AR creatures directly on the phone.
+This is a prototype for an AR card game deck builder and runtime testing tool. It is currently focused on Unity Editor testing with Vuforia and iVCam, not a finished standalone mobile app.
+
+The project demonstrates custom deck creation, deck editing, runtime deck selection, AR card scanning, model spawning, summon effects, stats, sounds, and spell/rule data. It can later be expanded into a fuller mobile AR card game with turn logic, combat resolution, player state, and complete card-to-card interactions.
